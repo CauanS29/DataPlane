@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=dataplane
+      - MONGODB_USERNAME=dataplane_user
+      - MONGODB_PASSWORD=dataplane_password
+      - MONGODB_AUTH_SOURCE=admin
+      - DEBUG=true
+      - API_TOKEN=dev-api-token-change-in-production
+    volumes:
+      - ./logs:/app/logs
+      - ./models:/app/models
+      - ./mongo-seeders:/app/mongo-seeders
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    environment:
+      - MONGO_INITDB_DATABASE=dataplane
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin_password
+    restart: unless-stopped
+
+volumes:
+  mongodb_data: 
