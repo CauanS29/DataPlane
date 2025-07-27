@@ -1,9 +1,0 @@
-id,name,price,category_id,description,stock
-1,Laptop Dell Inspiron,2500.00,1,Notebook Dell Inspiron 15 polegadas,10
-2,Smartphone Samsung Galaxy,1200.00,2,Celular Samsung Galaxy S23,25
-3,Headphones Sony WH-1000XM4,300.00,3,Fones de ouvido Sony com cancelamento de ruído,15
-4,Monitor LG 27",800.00,1,Monitor LG 27 polegadas 4K,8
-5,Tablet iPad Air,1800.00,2,Tablet Apple iPad Air 5ª geração,12
-6,Teclado Mecânico Logitech,200.00,3,Teclado mecânico Logitech G Pro,30
-7,Webcam Logitech C920,150.00,3,Webcam Logitech C920 HD,20
-8,SSD Samsung 1TB,400.00,1,SSD Samsung 1TB NVMe,18 
