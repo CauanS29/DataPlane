@@ -1,18 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/store';
-import { apiClient } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export const useApiAuth = () => {
-  const { isAuthenticated, setAuthenticated, testApiConnection } = useAppStore();
+  const { isAuthenticated, testApiConnection } = useAppStore();
   const [isChecking, setIsChecking] = useState(false);
 
-  // Verifica autenticação quando o componente monta
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     setIsChecking(true);
     try {
       const isConnected = await testApiConnection();
@@ -23,7 +17,12 @@ export const useApiAuth = () => {
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [testApiConnection]);
+
+  // Verifica autenticação quando o componente monta
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const refreshAuth = async () => {
     const isValid = await checkAuth();

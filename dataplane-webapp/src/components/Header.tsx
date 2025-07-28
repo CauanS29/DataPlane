@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from '@/store';
-import { Brain, BarChart3, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { Brain, BarChart3, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Header: React.FC = () => {
@@ -18,7 +18,7 @@ const Header: React.FC = () => {
   // Testa conexão quando o componente monta
   useEffect(() => {
     testApiConnection();
-  }, []);
+  }, [testApiConnection]);
 
   const handleTestConnection = async () => {
     const isConnected = await testApiConnection();

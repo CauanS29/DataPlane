@@ -35,8 +35,15 @@ export function getSeverityColor(severity: string): string {
   }
 }
 
+// Define o tipo para um objeto de acidente
+interface Accident {
+  fatalities?: { total?: number };
+  severity?: string;
+  phase?: string;
+}
+
 // Função para calcular estatísticas de acidentes
-export function calculateAccidentStats(accidents: any[]) {
+export function calculateAccidentStats(accidents: Accident[]) {
   const total = accidents.length;
   const fatalities = accidents.reduce((sum, acc) => sum + (acc.fatalities?.total || 0), 0);
   const bySeverity = accidents.reduce((acc, accident) => {
@@ -60,7 +67,7 @@ export function calculateAccidentStats(accidents: any[]) {
 }
 
 // Função para debounce
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

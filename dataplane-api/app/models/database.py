@@ -39,7 +39,7 @@ class MongoDB:
     
     async def get_collection(self, collection_name: str):
         """Obtém uma coleção do MongoDB"""
-        if not self.database:
+        if self.database is None:
             await self.connect()
         return self.database[collection_name]
 
@@ -50,14 +50,20 @@ mongodb = MongoDB()
 
 async def get_database():
     """Dependency para obter conexão com o banco"""
-    if not mongodb.database:
+    if mongodb.database is None:
         await mongodb.connect()
     return mongodb.database
 
 
 async def get_collection(collection_name: str):
     """Dependency para obter uma coleção"""
-    return await mongodb.get_collection(collection_name)
+    db = await get_database()
+    return db[collection_name]
+
+
+async def get_ai_requests_collection():
+    """Dependency para obter a coleção 'ai_requests'"""
+    return await get_collection("ai_requests")
 
 
 # Funções para operações comuns no MongoDB

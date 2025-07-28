@@ -1,114 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { useAppStore, useDashboardStore } from '@/store';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAppStore } from '@/store';
 import { AirAccident } from '@/types';
 import { formatDate, formatNumber, getSeverityColor, calculateAccidentStats } from '@/lib/utils';
-import { BarChart3, MapPin, Calendar, AlertTriangle, Filter, Download } from 'lucide-react';
+import { MapPin, Calendar, AlertTriangle, Filter, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useDashboardStore } from '@/store';
 import toast from 'react-hot-toast';
 
-// Dados de exemplo para acidentes aéreos
-const sampleAccidents: AirAccident[] = [
-  {
-    id: '1',
-    date: '2024-01-15',
-    location: {
-      city: 'São Paulo',
-      state: 'SP',
-      country: 'Brasil',
-      coordinates: { lat: -23.5505, lng: -46.6333 }
-    },
-    aircraft: {
-      type: 'Boeing 737',
-      registration: 'PR-GTD',
-      operator: 'Gol Linhas Aéreas'
-    },
-    fatalities: {
-      total: 0,
-      passengers: 0,
-      crew: 0,
-      ground: 0
-    },
-    phase: 'landing',
-    cause: 'Pista molhada',
-    weather: 'Chuva',
-    severity: 'minor'
-  },
-  {
-    id: '2',
-    date: '2024-01-10',
-    location: {
-      city: 'Rio de Janeiro',
-      state: 'RJ',
-      country: 'Brasil',
-      coordinates: { lat: -22.9068, lng: -43.1729 }
-    },
-    aircraft: {
-      type: 'Airbus A320',
-      registration: 'PT-MRO',
-      operator: 'LATAM'
-    },
-    fatalities: {
-      total: 2,
-      passengers: 1,
-      crew: 1,
-      ground: 0
-    },
-    phase: 'takeoff',
-    cause: 'Falha no motor',
-    weather: 'Céu limpo',
-    severity: 'major'
-  },
-  {
-    id: '3',
-    date: '2024-01-05',
-    location: {
-      city: 'Brasília',
-      state: 'DF',
-      country: 'Brasil',
-      coordinates: { lat: -15.7942, lng: -47.8822 }
-    },
-    aircraft: {
-      type: 'Embraer E190',
-      registration: 'PR-AKE',
-      operator: 'Azul Linhas Aéreas'
-    },
-    fatalities: {
-      total: 0,
-      passengers: 0,
-      crew: 0,
-      ground: 0
-    },
-    phase: 'cruise',
-    cause: 'Turbulência',
-    weather: 'Tempestade',
-    severity: 'minor'
-  }
-];
-
 const DashboardPage: React.FC = () => {
-  const { accidents, setAccidents, loading, setLoading } = useAppStore();
+  const { accidents, fetchAccidents } = useAppStore();
   const { filters, setFilters, resetFilters } = useDashboardStore();
   const [selectedAccident, setSelectedAccident] = useState<AirAccident | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    // Carrega dados de exemplo
-    if (accidents.length === 0) {
-      setAccidents(sampleAccidents);
-    }
-  }, [accidents.length, setAccidents]);
+    fetchAccidents();
+  }, [fetchAccidents]);
 
   const stats = calculateAccidentStats(accidents);
 
-  const filteredAccidents = accidents.filter(accident => {
-    if (filters.dateRange.start && new Date(accident.date) < new Date(filters.dateRange.start)) return false;
-    if (filters.dateRange.end && new Date(accident.date) > new Date(filters.dateRange.end)) return false;
-    if (filters.severity.length > 0 && !filters.severity.includes(accident.severity)) return false;
-    if (filters.phase.length > 0 && !filters.phase.includes(accident.phase)) return false;
-    if (filters.country.length > 0 && !filters.country.includes(accident.location.country)) return false;
-    return true;
-  });
+  const filteredAccidents = useMemo(() => {
+    let filtered = [...accidents];
+    if (filters.dateRange.start) {
+      filtered = filtered.filter(accident => new Date(accident.date) >= new Date(filters.dateRange.start));
+    }
+    if (filters.dateRange.end) {
+      filtered = filtered.filter(accident => new Date(accident.date) <= new Date(filters.dateRange.end));
+    }
+    if (filters.severity.length > 0) {
+      filtered = filtered.filter(accident => filters.severity.includes(accident.severity));
+    }
+    if (filters.phase.length > 0) {
+      filtered = filtered.filter(accident => filters.phase.includes(accident.phase));
+    }
+    if (filters.country.length > 0) {
+      filtered = filtered.filter(accident => filters.country.includes(accident.location.country));
+    }
+    return filtered;
+  }, [accidents, filters]);
 
   const exportData = () => {
     const csvContent = [
@@ -298,7 +228,7 @@ const DashboardPage: React.FC = () => {
                     {severity === 'minor' ? 'Menor' : severity === 'major' ? 'Maior' : 'Fatal'}
                   </span>
                 </div>
-                <span className="text-sm font-bold text-gray-900">{count}</span>
+                <span className="text-sm font-bold text-gray-900">{String(count)}</span>
               </div>
             ))}
           </div>
@@ -316,7 +246,7 @@ const DashboardPage: React.FC = () => {
                    phase === 'cruise' ? 'Cruzeiro' : 
                    phase === 'approach' ? 'Aproximação' : phase}
                 </span>
-                <span className="text-sm font-bold text-gray-900">{count}</span>
+                <span className="text-sm font-bold text-gray-900">{String(count)}</span>
               </div>
             ))}
           </div>

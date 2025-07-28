@@ -4,16 +4,16 @@ from app.models.schemas import HealthCheck
 from app.services.ai_service import ai_service
 from app.utils.logger import app_logger
 
-router = APIRouter(prefix="/health", tags=["health"])
+health_router = APIRouter(prefix="/health", tags=["health"])
 
 
-@router.get("/", response_model=HealthCheck)
+@health_router.get("/", response_model=HealthCheck)
 async def health_check():
     """Endpoint básico de health check"""
     return HealthCheck()
 
 
-@router.get("/detailed")
+@health_router.get("/detailed")
 async def detailed_health_check(db=Depends(get_database)):
     """Health check detalhado com verificação de serviços"""
     health_status = {
@@ -49,7 +49,7 @@ async def detailed_health_check(db=Depends(get_database)):
     return health_status
 
 
-@router.get("/ai")
+@health_router.get("/ai")
 async def ai_health_check():
     """Health check específico do serviço de IA"""
     try:

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Input } from '@/components/ui/Input';
 import { Brain, Send, Copy, Download, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 interface PredictionFormData {
   prompt: string;
@@ -26,7 +27,6 @@ const PredictionPage: React.FC = () => {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
   } = useForm<PredictionFormData>({
     defaultValues: {
       prompt: '',
@@ -58,18 +58,27 @@ const PredictionPage: React.FC = () => {
       const response = await apiClient.generateText(request);
       setResult(response);
       toast.success('Predição gerada com sucesso!');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro na predição:', error);
       
-      if (error.response?.status === 401) {
-        toast.error('Erro de autenticação. Verifique a configuração da API.');
-        // Tenta reconectar
-        await testApiConnection();
-      } else if (error.response?.status === 422) {
-        toast.error('Dados inválidos. Verifique os parâmetros.');
-      } else {
-        toast.error(error.response?.data?.detail || 'Erro ao gerar predição');
+      let errorMessage = 'Erro ao gerar predição.';
+
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          if (error.response.status === 401) {
+            errorMessage = 'Erro de autenticação. Verifique a configuração da API.';
+            testApiConnection();
+          } else if (error.response.status === 422) {
+            errorMessage = 'Dados inválidos. Verifique os parâmetros.';
+          } else if (error.response.data?.detail) {
+            errorMessage = error.response.data.detail;
+          }
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

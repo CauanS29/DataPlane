@@ -1,16 +1,10 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
   output: 'standalone',
   experimental: {
-    serverComponentsExternalPackages: ['plotly.js'],
-  },
-  images: {
-    domains: ['localhost'],
-  },
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-  },
+    serverExternalPackages: ['@react-leaflet/core', 'leaflet']
+  }
 };
 
-export default nextConfig;
+module.exports = nextConfig;

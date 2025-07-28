@@ -9,126 +9,59 @@ import os
 from pathlib import Path
 
 
-def check_docker():
-    """Verifica se o Docker está rodando"""
-    try:
-        subprocess.run(["docker", "ps"], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("❌ Docker não está rodando ou não está instalado")
-        return False
-
-
-def check_containers():
-    """Verifica se os containers estão rodando"""
-    try:
-        # Verifica se o container da API está rodando
-        result = subprocess.run(
-            ["docker", "ps", "--filter", "name=dataplane-api-api-1", "--format", "{{.Names}}"],
-            capture_output=True, text=True
-        )
-        
-        if "dataplane-api-api-1" in result.stdout:
-            print("✅ Container da API está rodando")
-            return True
-        else:
-            print("⚠️  Container da API não está rodando")
-            print("💡 Execute: docker-compose up -d")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Erro ao verificar containers: {e}")
-        return False
-
-
 def run_seeders():
-    """Executa os seeders via Docker"""
-    try:
-        print("🌱 Executando seeders do MongoDB...")
-        
-        # Executa o script de seeding dentro do container
-        result = subprocess.run([
-            "docker-compose", "exec", "-T", "api", 
-            "python", "mongo-seeders/seed_database.py"
-        ], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            print("✅ Seeders executados com sucesso!")
-            print("\n📊 Logs:")
-            print(result.stdout)
-        else:
-            print("❌ Erro ao executar seeders:")
-            print(result.stderr)
-            return False
-            
-        return True
-        
-    except Exception as e:
-        print(f"❌ Erro ao executar seeders: {e}")
-        return False
-
-
-def run_seeders_local():
-    """Executa os seeders localmente"""
-    try:
-        print("🌱 Executando seeders localmente...")
-        
-        # Verifica se o arquivo existe
-        seed_script = Path("mongo-seeders/seed_database.py")
-        if not seed_script.exists():
-            print("❌ Script de seeding não encontrado")
-            return False
-        
-        # Executa o script
-        result = subprocess.run([
-            sys.executable, "mongo-seeders/seed_database.py"
-        ], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            print("✅ Seeders executados com sucesso!")
-            print("\n📊 Logs:")
-            print(result.stdout)
-        else:
-            print("❌ Erro ao executar seeders:")
-            print(result.stderr)
-            return False
-            
-        return True
-        
-    except Exception as e:
-        print(f"❌ Erro ao executar seeders: {e}")
-        return False
-
-
-def main():
-    """Função principal"""
+    """
+    Executa o script de popular o banco de dados.
+    Este script garante que as dependências sejam instaladas e que o
+    script principal do seeder seja chamado.
+    """
     print("=" * 60)
-    print("🌱 MongoDB Seeders Runner")
+    print("🌱 Iniciando o processo de popular o banco de dados...")
     print("=" * 60)
-    
-    # Verifica se está rodando via Docker ou localmente
-    if os.getenv("DOCKER_ENV"):
-        print("🐳 Modo Docker detectado")
-        
-        if not check_docker():
+
+    try:
+        # Define o caminho para o script do seeder
+        seeder_script_path = Path(__file__).parent / "mongo-seeders" / "seed_database.py"
+
+        if not seeder_script_path.exists():
+            print(f"❌ Erro: Script do seeder não encontrado em '{seeder_script_path}'")
             sys.exit(1)
+
+        # O ambiente virtual e as dependências já devem estar ativos
+        # se este script for executado no contexto do Docker ou com 'pipenv run'.
+        # Apenas executamos o script diretamente.
+        print(f"🐍 Executando script: {seeder_script_path.name}")
         
-        if not check_containers():
-            sys.exit(1)
+        # Constrói o comando para executar o script
+        command = [sys.executable, str(seeder_script_path)]
         
-        success = run_seeders()
-    else:
-        print("💻 Modo local detectado")
-        success = run_seeders_local()
-    
-    if success:
-        print("\n🎉 Seeding concluído com sucesso!")
-        print("💡 Você pode verificar os dados no MongoDB:")
-        print("   docker exec mongodb mongosh --username dataplane_user --password dataplane_password --authenticationDatabase admin")
-    else:
-        print("\n❌ Seeding falhou!")
+        # Executa o comando
+        result = subprocess.run(command, check=True, text=True, capture_output=True)
+
+        # Imprime a saída do script filho
+        if result.stdout:
+            print("\n--- Saída do script ---\n")
+            print(result.stdout)
+        
+        if result.stderr:
+            print("\n--- Erros do script ---\n")
+            print(result.stderr)
+            
+        print("\n✅ Processo de popular o banco de dados concluído com sucesso!")
+
+    except FileNotFoundError:
+        print("❌ Erro: O Python não foi encontrado. Verifique se ele está no PATH.")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Erro ao executar o script do seeder.")
+        print("\n--- Saída do script ---\n")
+        print(e.stdout)
+        print("\n--- Erros do script ---\n")
+        print(e.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Ocorreu um erro inesperado: {e}")
         sys.exit(1)
 
-
 if __name__ == "__main__":
-    main() 
+    run_seeders() 

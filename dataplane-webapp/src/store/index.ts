@@ -9,13 +9,12 @@ interface AppStore extends AppState {
   setAuthenticated: (authenticated: boolean) => void;
   setAccidents: (accidents: AirAccident[]) => void;
   setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
   addAccident: (accident: AirAccident) => void;
   updateAccident: (id: string, updates: Partial<AirAccident>) => void;
   removeAccident: (id: string) => void;
-  clearError: () => void;
   reset: () => void;
   testApiConnection: () => Promise<boolean>;
+  fetchAccidents: () => Promise<void>;
 }
 
 const initialState: AppState = {
@@ -29,7 +28,7 @@ const initialState: AppState = {
 
 export const useAppStore = create<AppStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
 
       setCurrentView: (view) => set({ currentView: view }),
@@ -39,8 +38,6 @@ export const useAppStore = create<AppStore>()(
       setAccidents: (accidents) => set({ accidents }),
 
       setLoading: (loading) => set({ loading }),
-
-      setError: (error) => set({ error }),
 
       addAccident: (accident) =>
         set((state) => ({
@@ -59,8 +56,6 @@ export const useAppStore = create<AppStore>()(
           accidents: state.accidents.filter((accident) => accident.id !== id),
         })),
 
-      clearError: () => set({ error: null }),
-
       reset: () => {
         set(initialState);
       },
@@ -73,6 +68,18 @@ export const useAppStore = create<AppStore>()(
         } catch (error) {
           set({ isAuthenticated: false });
           return false;
+        }
+      },
+
+      fetchAccidents: async () => {
+        set({ loading: true, error: null });
+        try {
+          const data = await apiClient.getAIHistory();
+          set({ accidents: data, loading: false });
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar dados';
+          set({ error: errorMessage, loading: false });
+          console.error('Erro ao buscar dados:', err);
         }
       },
     }),

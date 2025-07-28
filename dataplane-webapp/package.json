@@ -11,8 +11,8 @@
     "docker:run": "docker run -p 3000:3000 dataplane-webapp"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "next": "15.4.3",
     "axios": "^1.6.0",
     "react-query": "^3.39.3",
@@ -33,8 +33,8 @@
   "devDependencies": {
     "typescript": "^5",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "@types/leaflet": "^1.9.8",
     "@tailwindcss/postcss": "^4",
     "tailwindcss": "^4",

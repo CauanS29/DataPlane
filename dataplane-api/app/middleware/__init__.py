@@ -1,5 +1,4 @@
-from .cors import setup_cors
 from .logging import LoggingMiddleware
-from .api_token import APITokenMiddleware
+from .cors import setup_cors
 
-__all__ = ["setup_cors", "LoggingMiddleware", "APITokenMiddleware"] 
+__all__ = ["setup_cors", "LoggingMiddleware"] 

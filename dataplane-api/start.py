@@ -61,29 +61,30 @@ def setup_environment():
 def check_mongodb():
     """Verifica se o MongoDB está rodando"""
     try:
+        from app.config.settings import settings
         import pymongo
-        from dotenv import load_dotenv
-        
-        # Carrega variáveis de ambiente
-        load_dotenv()
-        
+
         # Tenta conectar com as credenciais da aplicação
-        username = os.getenv("MONGODB_USERNAME")
-        password = os.getenv("MONGODB_PASSWORD")
-        
-        if username and password:
+        if settings.MONGODB_USERNAME and settings.MONGODB_PASSWORD:
             # Conecta com autenticação
-            connection_string = f"mongodb://{username}:{password}@localhost:27017/dataplane?authSource=admin"
+            connection_string = (
+                f"mongodb://{settings.MONGODB_USERNAME}:{settings.MONGODB_PASSWORD}"
+                f"@{settings.MONGODB_URL.replace('mongodb://', '')}/"
+                f"{settings.MONGODB_DB}?authSource={settings.MONGODB_AUTH_SOURCE}"
+            )
             client = pymongo.MongoClient(connection_string, serverSelectionTimeoutMS=2000)
         else:
             # Conecta sem autenticação (para desenvolvimento)
-            client = pymongo.MongoClient("mongodb://localhost:27017", serverSelectionTimeoutMS=2000)
+            client = pymongo.MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=2000)
         
         client.admin.command('ping')
         print("✅ MongoDB está rodando e acessível")
         client.close()
         return True
         
+    except ImportError:
+        print("⚠️  Não foi possível importar as configurações. Verifique a estrutura do projeto.")
+        return False
     except Exception as e:
         print("⚠️  MongoDB não está rodando ou não está acessível")
         print(f"   Erro: {e}")

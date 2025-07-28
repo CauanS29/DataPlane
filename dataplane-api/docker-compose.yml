@@ -1,38 +1,71 @@
 version: '3.8'
 
 services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - MONGODB_URL=mongodb://mongodb:27017
-      - MONGODB_DB=dataplane
-      - MONGODB_USERNAME=dataplane_user
-      - MONGODB_PASSWORD=dataplane_password
-      - MONGODB_AUTH_SOURCE=admin
-      - DEBUG=true
-      - API_TOKEN=dev-api-token-change-in-production
-    volumes:
-      - ./logs:/app/logs
-      - ./models:/app/models
-      - ./mongo-seeders:/app/mongo-seeders
-    depends_on:
-      - mongodb
-    restart: unless-stopped
-
   mongodb:
-    image: mongo:7
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d
     environment:
-      - MONGO_INITDB_DATABASE=dataplane
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=admin_password
-    restart: unless-stopped
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+
+  mongo-init-py:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mongo-init-py
+    restart: on-failure
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    environment:
+      - MONGODB_HOST=host.docker.internal
+    command: python /app/mongo-init/init-mongo.py
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dataplane-api
+    restart: always
+    depends_on:
+      - mongodb
+      - mongo-init-py
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DEBUG=True
+      - API_TOKEN=${API_TOKEN}
+      - MONGODB_URL=mongodb://host.docker.internal:27017
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mongo-seeder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mongo-seeder
+    restart: on-failure
+    depends_on:
+      - mongo-init-py
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URL=mongodb://host.docker.internal:27017
+    command: python /app/mongo-seeders/seed_database.py
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   mongodb_data: 

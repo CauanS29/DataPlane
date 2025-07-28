@@ -6,5 +6,5 @@ from app.config.settings import settings
 api_router = APIRouter()
 
 # Inclui todos os roteadores
-api_router.include_router(health_router.router, prefix=settings.API_V1_STR)
-api_router.include_router(ai_router.router, prefix=settings.API_V1_STR) 
+api_router.include_router(health_router)
+api_router.include_router(ai_router) 

@@ -1,19 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional
-from app.models.database import get_collection, save_ai_request, get_ai_requests_history
+from app.models.database import save_ai_request, get_ai_requests_history, get_ai_requests_collection
 from app.models.schemas import AIRequest, AIResponse, ErrorResponse
 from app.services.ai_service import ai_service
-from app.middleware.api_token import APITokenMiddleware
+from app.middleware.api_token import verify_api_token
 from app.utils.logger import app_logger
 
-router = APIRouter(prefix="/ai", tags=["ai"])
+ai_router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-@router.post("/generate", response_model=AIResponse)
+@ai_router.post("/generate", response_model=AIResponse)
 async def generate_text(
     request: AIRequest,
-    collection=Depends(lambda: get_collection("ai_requests")),
-    authenticated: bool = Depends(APITokenMiddleware.require_api_token)
+    collection=Depends(get_ai_requests_collection),
+    authenticated: bool = Depends(verify_api_token)
 ):
     """Gera texto usando o modelo de IA"""
     try:
@@ -44,9 +44,9 @@ async def generate_text(
         )
 
 
-@router.get("/model/info")
+@ai_router.get("/model/info")
 async def get_model_info(
-    authenticated: bool = Depends(APITokenMiddleware.require_api_token)
+    authenticated: bool = Depends(verify_api_token)
 ):
     """Retorna informações sobre o modelo de IA"""
     try:
@@ -59,9 +59,9 @@ async def get_model_info(
         )
 
 
-@router.post("/model/load")
+@ai_router.post("/model/load")
 async def load_model(
-    authenticated: bool = Depends(APITokenMiddleware.require_api_token)
+    authenticated: bool = Depends(verify_api_token)
 ):
     """Carrega o modelo de IA na memória"""
     try:
@@ -81,9 +81,9 @@ async def load_model(
         )
 
 
-@router.post("/model/unload")
+@ai_router.post("/model/unload")
 async def unload_model(
-    authenticated: bool = Depends(APITokenMiddleware.require_api_token)
+    authenticated: bool = Depends(verify_api_token)
 ):
     """Descarrega o modelo de IA da memória"""
     try:
@@ -97,12 +97,12 @@ async def unload_model(
         )
 
 
-@router.get("/history", response_model=list[dict])
+@ai_router.get("/history", response_model=list[dict])
 async def get_generation_history(
     skip: int = 0,
     limit: int = 50,
-    collection=Depends(lambda: get_collection("ai_requests")),
-    authenticated: bool = Depends(APITokenMiddleware.require_api_token)
+    collection=Depends(get_ai_requests_collection),
+    authenticated: bool = Depends(verify_api_token)
 ):
     """Retorna histórico de gerações"""
     try:

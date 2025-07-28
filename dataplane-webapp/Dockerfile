@@ -1,4 +1,16 @@
 # Dockerfile para o frontend Next.js
+
+# Estágio de desenvolvimento
+FROM node:18-alpine AS development
+WORKDIR /app
+COPY package*.json ./
+# Instala todas as dependências, incluindo as de desenvolvimento
+RUN npm install
+COPY . .
+# O comando `npm run dev` será executado pelo docker-compose
+EXPOSE 3000
+
+# Estágio base para build de produção
 FROM node:18-alpine AS base
 
 # Instala dependências necessárias
@@ -20,7 +32,7 @@ COPY . .
 RUN npm run build
 
 # Imagem de produção
-FROM node:18-alpine AS runner
+FROM node:18-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV production
