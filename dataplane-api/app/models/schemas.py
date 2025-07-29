@@ -54,3 +54,19 @@ class AIRequestHistory(BaseModel):
     generation_time: int  # em milissegundos
     tokens_generated: int
     created_at: datetime = Field(default_factory=datetime.utcnow) 
+
+class OcurrenceCoordinates(BaseModel):
+    """Schema para coordenadas de ocorrências"""
+    codigo_ocorrencia: str = Field(..., description="Código único da ocorrência")
+    ocorrencia_latitude: float = Field(..., description="Latitude da ocorrência", ge=-90, le=90)
+    ocorrencia_longitude: float = Field(..., description="Longitude da ocorrência", ge=-180, le=180)
+    ocorrencia_cidade: Optional[str] = Field(None, description="Cidade da ocorrência")
+    ocorrencia_uf: Optional[str] = Field(None, description="Estado da ocorrência")
+    ocorrencia_classificacao: Optional[str] = Field(None, description="Classificação da ocorrência")
+    ocorrencia_dia: Optional[str] = Field(None, description="Data da ocorrência")
+
+
+class OcurrenceCoordinatesResponse(BaseModel):
+    """Schema para resposta das coordenadas de ocorrências"""
+    total: int = Field(..., description="Total de ocorrências encontradas")
+    ocurrences: List[OcurrenceCoordinates] = Field(..., description="Lista de ocorrências com coordenadas")

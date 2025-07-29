@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { Brain, BarChart3, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { LogoIcon } from './icons';
+import Image from 'next/image';
 
 const Header: React.FC = () => {
   const { 
@@ -36,7 +38,7 @@ const Header: React.FC = () => {
           {/* Logo e título */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900">DataPlane</h1>
+              <Image src={LogoIcon} alt="DataPlane" className="w-10 h-10" />
             </div>
           </div>
 

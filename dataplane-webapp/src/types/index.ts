@@ -57,6 +57,7 @@ export interface AppState {
   apiToken: string;
   isAuthenticated: boolean;
   accidents: AirAccident[];
+  ocurrences: OcurrenceCoordinates[];
   loading: boolean;
   error: string | null;
 }
@@ -80,3 +81,13 @@ export interface DashboardFilters {
   phase: string[];
   country: string[];
 } 
+
+export interface OcurrenceCoordinates {
+  codigo_ocorrencia: string;
+  ocorrencia_latitude: number;
+  ocorrencia_longitude: number;
+  ocorrencia_cidade: string;
+  ocorrencia_uf: string;
+  ocorrencia_classificacao: string;
+  ocorrencia_dia: string;
+}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AppState, AirAccident, DashboardFilters } from '@/types';
+import { AppState, AirAccident, DashboardFilters, OcurrenceCoordinates } from '@/types';
 import { apiClient } from '@/lib/api';
 
 interface AppStore extends AppState {
@@ -8,6 +8,7 @@ interface AppStore extends AppState {
   setCurrentView: (view: 'prediction' | 'dashboard') => void;
   setAuthenticated: (authenticated: boolean) => void;
   setAccidents: (accidents: AirAccident[]) => void;
+  setOcurrences: (ocurrences: OcurrenceCoordinates[]) => void;
   setLoading: (loading: boolean) => void;
   addAccident: (accident: AirAccident) => void;
   updateAccident: (id: string, updates: Partial<AirAccident>) => void;
@@ -15,6 +16,7 @@ interface AppStore extends AppState {
   reset: () => void;
   testApiConnection: () => Promise<boolean>;
   fetchAccidents: () => Promise<void>;
+  fetchOcurrencesCoordinates: () => Promise<void>;
 }
 
 const initialState: AppState = {
@@ -22,6 +24,7 @@ const initialState: AppState = {
   apiToken: '', // Não é mais usado, mas mantido para compatibilidade
   isAuthenticated: false,
   accidents: [],
+  ocurrences: [],
   loading: false,
   error: null,
 };
@@ -36,6 +39,8 @@ export const useAppStore = create<AppStore>()(
       setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
 
       setAccidents: (accidents) => set({ accidents }),
+
+      setOcurrences: (ocurrences) => set({ ocurrences }),
 
       setLoading: (loading) => set({ loading }),
 
@@ -82,13 +87,27 @@ export const useAppStore = create<AppStore>()(
           console.error('Erro ao buscar dados:', err);
         }
       },
+
+      fetchOcurrencesCoordinates: async () => {
+        set({ loading: true, error: null });
+        try {
+          const data = await apiClient.getOcurrencesCoordinates();
+          set({ ocurrences: data, loading: false });
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar coordenadas';
+          set({ error: errorMessage, loading: false });
+          console.error('Erro ao buscar coordenadas:', err);
+        }
+      },
     }),
+    
     {
       name: 'dataplane-storage',
       partialize: (state) => ({
         currentView: state.currentView,
         isAuthenticated: state.isAuthenticated,
         accidents: state.accidents,
+        ocurrences: state.ocurrences,
       }),
     }
   )

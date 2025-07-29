@@ -71,6 +71,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getOcurrencesCoordinates() {
+    const response = await this.client.get('/api/v1/ocurrence/coordinates');
+    return response.data;
+  }
+
   // Test connection
   async testConnection(): Promise<boolean> {
     try {

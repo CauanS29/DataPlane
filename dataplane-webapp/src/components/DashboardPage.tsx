@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useDashboardStore } from '@/store';
 import toast from 'react-hot-toast';
+import OcurrenceMap from './OcurrenceMap';
 
 const DashboardPage: React.FC = () => {
   const { accidents, fetchAccidents } = useAppStore();
@@ -213,44 +214,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Gráficos e visualizações */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Gráfico por severidade */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Acidentes por Severidade</h3>
-          <div className="space-y-3">
-            {Object.entries(stats.bySeverity).map(([severity, count]) => (
-              <div key={severity} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div
-                    className="w-4 h-4 rounded-full mr-3"
-                    style={{ backgroundColor: getSeverityColor(severity) }}
-                  />
-                  <span className="text-sm font-medium text-gray-700 capitalize">
-                    {severity === 'minor' ? 'Menor' : severity === 'major' ? 'Maior' : 'Fatal'}
-                  </span>
-                </div>
-                <span className="text-sm font-bold text-gray-900">{String(count)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Gráfico por fase */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Acidentes por Fase</h3>
-          <div className="space-y-3">
-            {Object.entries(stats.byPhase).map(([phase, count]) => (
-              <div key={phase} className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700 capitalize">
-                  {phase === 'takeoff' ? 'Decolagem' : 
-                   phase === 'landing' ? 'Pouso' : 
-                   phase === 'cruise' ? 'Cruzeiro' : 
-                   phase === 'approach' ? 'Aproximação' : phase}
-                </span>
-                <span className="text-sm font-bold text-gray-900">{String(count)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <OcurrenceMap />
       </div>
 
       {/* Lista de acidentes */}
