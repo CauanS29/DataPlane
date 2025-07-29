@@ -1,0 +1,28 @@
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: dataplane-webapp
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+
+  webapp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: dataplane-webapp-dev
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+    env_file:
+      - .env
+    command: npm run dev 
