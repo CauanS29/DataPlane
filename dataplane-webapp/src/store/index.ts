@@ -17,6 +17,7 @@ interface AppStore extends AppState {
   testApiConnection: () => Promise<boolean>;
   fetchAccidents: () => Promise<void>;
   fetchOcurrencesCoordinates: () => Promise<void>;
+  clearStorageData: () => void;
 }
 
 const initialState: AppState = {
@@ -71,7 +72,7 @@ export const useAppStore = create<AppStore>()(
           const isConnected = await apiClient.testConnectionWithAuth();
           set({ isAuthenticated: isConnected });
           return isConnected;
-        } catch (error) {
+        } catch {
           set({ isAuthenticated: false });
           return false;
         }
@@ -96,11 +97,25 @@ export const useAppStore = create<AppStore>()(
           // Garante que data seja um objeto com total e ocurrences
           const ocurrencesArray = Array.isArray(data.ocurrences) ? data.ocurrences : [];
           const total = data.total || 0;
+          
+          // Log do tamanho dos dados para monitoramento
+          console.log(`Dados recebidos: ${ocurrencesArray.length} ocorrências, ~${JSON.stringify(ocurrencesArray).length} bytes`);
+          
           set({ ocurrences: ocurrencesArray, ocurrencesTotal: total, loading: false });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar coordenadas';
           set({ error: errorMessage, loading: false, ocurrences: [], ocurrencesTotal: 0 });
           console.error('Erro ao buscar coordenadas:', err);
+        }
+      },
+
+      // Função para limpar dados do localStorage em caso de problemas
+      clearStorageData: () => {
+        try {
+          localStorage.removeItem('dataplane-storage');
+          console.log('Dados do localStorage limpos com sucesso');
+        } catch (clearError) {
+          console.warn('Erro ao limpar localStorage:', clearError);
         }
       },
     }),
@@ -110,9 +125,23 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         currentView: state.currentView,
         isAuthenticated: state.isAuthenticated,
-        // Removido: accidents e ocurrences para evitar quota exceeded
-        // Esses dados são grandes e podem ser rebuscados quando necessário
+        // Apenas dados pequenos e essenciais são persistidos
+        // accidents, ocurrences e outros dados grandes são sempre rebuscados
       }),
+      // Tratamento de erros no próprio persist
+      onRehydrateStorage: () => {
+        return (state, error) => {
+          if (error) {
+            console.warn('Erro ao recarregar dados do localStorage:', error);
+            // Em caso de erro, limpa os dados
+            try {
+              localStorage.removeItem('dataplane-storage');
+            } catch (clearError) {
+              console.warn('Erro ao limpar localStorage:', clearError);
+            }
+          }
+        };
+      },
     }
   )
 );
