@@ -7,17 +7,14 @@ const OcurrenceMap = () => {
     const { ocurrences, fetchOcurrencesCoordinates, loading } = useAppStore();
     const [selectedState, setSelectedState] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [mapComponents, setMapComponents] = useState<{
-        ComposableMap?: React.ComponentType<any>;
-        Geographies?: React.ComponentType<any>;
-        Geography?: React.ComponentType<any>;
-        Marker?: React.ComponentType<any>;
+        ComposableMap?: React.ComponentType<Record<string, unknown>>;
+        Geographies?: React.ComponentType<Record<string, unknown>>;
+        Geography?: React.ComponentType<Record<string, unknown>>;
+        Marker?: React.ComponentType<Record<string, unknown>>;
     }>({});
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [brTopoJson, setBrTopoJson] = useState<any>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [geoCentroidFn, setGeoCentroidFn] = useState<any>(null);
+    const [brTopoJson, setBrTopoJson] = useState<Record<string, unknown> | null>(null);
+    const [geoCentroidFn, setGeoCentroidFn] = useState<((geo: Record<string, unknown>) => [number, number]) | null>(null);
 
     useEffect(() => {
         setIsClient(true);
@@ -51,7 +48,7 @@ const OcurrenceMap = () => {
         if (typeof window !== "undefined") {
             loadMapComponents();
         }
-    }, []);
+    }, [fetchOcurrencesCoordinates]);
 
     // Verificação de segurança para garantir que ocurrences seja um array
     const safeOcurrences = Array.isArray(ocurrences) ? ocurrences : [];
@@ -191,23 +188,23 @@ const OcurrenceMap = () => {
                                                             style={{
                                                                 default: {
                                                                     fill: stateColor,
-                                                                    stroke: "#F1F1F1",
-                                                                    strokeWidth: isSelected ? 3 : 2,
+                                                                    stroke: isSelected ? "#FFFFFF" : "#F1F1F1",
+                                                                    strokeWidth: isSelected ? 4 : 2,
                                                                     outline: "none",
                                                                     cursor: "pointer",
                                                                     transition: "all .2s"
                                                                 },
                                                                 hover: {
                                                                     fill: "#0C669B",
-                                                                    stroke: "#F1F1F1",
-                                                                    strokeWidth: 2,
+                                                                    stroke: isSelected ? "#FFFFFF" : "#F1F1F1",
+                                                                    strokeWidth: isSelected ? 4 : 2,
                                                                     outline: "none",
                                                                     cursor: "pointer"
                                                                 },
                                                                 pressed: {
                                                                     fill: "#084A6B",
-                                                                    stroke: "#F1F1F1",
-                                                                    strokeWidth: 2,
+                                                                    stroke: isSelected ? "#FFFFFF" : "#F1F1F1",
+                                                                    strokeWidth: isSelected ? 4 : 2,
                                                                     outline: "none"
                                                                 }
                                                             }}
@@ -287,42 +284,142 @@ const OcurrenceMap = () => {
                     </div>
                 </div>
 
-                {/* Painel de informações com scroll */}
+                {/* Painel de gráficos e análises */}
                 <div className="space-y-6 max-h-[633px] overflow-y-auto">
-                    {/* Ranking de estados */}
+                    {/* Gráfico de Classificação de Ocorrências */}
                     <div>
-                        <h3 className="text-md font-semibold text-gray-800 mb-4">🏆 Ranking por Estado</h3>
+                        <h3 className="text-md font-semibold text-gray-800 mb-4">📊 Classificação das Ocorrências</h3>
                         <div className="space-y-2">
-                            {Object.entries(occurrencesByState)
-                                .sort(([,a], [,b]) => b.length - a.length)
-                                .slice(0, 20)
-                                .map(([uf, occurrences], index) => (
-                                    <button
-                                        key={uf}
-                                        onClick={() => handleStateClick(uf)}
-                                        className={`w-full p-3 text-left rounded-lg transition-colors ${
-                                            selectedState === uf 
-                                                ? 'bg-blue-100 border-blue-300' 
-                                                : 'bg-gray-50 hover:bg-gray-100'
-                                        } border`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center">
-                                                <span className="text-xs text-gray-500 mr-2">#{index + 1}</span>
-                                                <div 
-                                                    className="w-3 h-3 rounded mr-2"
-                                                    style={{ backgroundColor: getStateColor(uf) }}
-                                                ></div>
-                                                <span className="font-medium text-gray-900">
-                                                    {brazilStates[uf as keyof typeof brazilStates] || uf}
-                                                </span>
+                            {(() => {
+                                const classificacoes = validOcurrences.reduce((acc, occ) => {
+                                    const classificacao = occ.ocorrencia_classificacao ?? 'Não informado';
+                                    acc[classificacao] = (acc[classificacao] || 0) + 1;
+                                    return acc;
+                                }, {} as Record<string, number>);
+                                
+                                const maxValue = Math.max(...Object.values(classificacoes));
+                                
+                                return Object.entries(classificacoes)
+                                    .sort(([,a], [,b]) => b - a)
+                                    .slice(0, 5)
+                                    .map(([classificacao, count]) => (
+                                        <div key={classificacao} className="p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-sm font-medium text-gray-900">{classificacao}</span>
+                                                <span className="text-sm font-bold text-blue-600">{count}</span>
                                             </div>
-                                            <span className="text-sm font-bold" style={{ color: '#0C669B' }}>
-                                                {occurrences.length}
-                                            </span>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    className="bg-blue-600 h-2 rounded-full transition-all"
+                                                    style={{ width: `${(count / maxValue) * 100}%` }}
+                                                ></div>
+                                            </div>
                                         </div>
-                                    </button>
-                                ))}
+                                    ));
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* Gráfico de Tipos de Aeronave */}
+                    <div>
+                        <h3 className="text-md font-semibold text-gray-800 mb-4">✈️ Tipos de Aeronave</h3>
+                        <div className="space-y-2">
+                            {(() => {
+                                const tiposAeronave = validOcurrences.reduce((acc, occ) => {
+                                    const tipo = occ.aeronave_tipo_veiculo ?? 'Não informado';
+                                    acc[tipo] = (acc[tipo] || 0) + 1;
+                                    return acc;
+                                }, {} as Record<string, number>);
+                                
+                                const maxValue = Math.max(...Object.values(tiposAeronave));
+                                
+                                return Object.entries(tiposAeronave)
+                                    .sort(([,a], [,b]) => b - a)
+                                    .slice(0, 4)
+                                    .map(([tipo, count]) => (
+                                        <div key={tipo} className="p-3 bg-green-50 rounded-lg">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-sm font-medium text-gray-900">{tipo}</span>
+                                                <span className="text-sm font-bold text-green-600">{count}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    className="bg-green-600 h-2 rounded-full transition-all"
+                                                    style={{ width: `${(count / maxValue) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ));
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* Gráfico de Nível de Dano */}
+                    <div>
+                        <h3 className="text-md font-semibold text-gray-800 mb-4">⚠️ Nível de Dano</h3>
+                        <div className="space-y-2">
+                            {(() => {
+                                const nivelDano = validOcurrences.reduce((acc, occ) => {
+                                    const dano = occ.aeronave_nivel_dano ?? 'Não informado';
+                                    acc[dano] = (acc[dano] || 0) + 1;
+                                    return acc;
+                                }, {} as Record<string, number>);
+                                
+                                const maxValue = Math.max(...Object.values(nivelDano));
+                                const colors = ['bg-red-600', 'bg-orange-600', 'bg-yellow-600', 'bg-green-600'];
+                                
+                                return Object.entries(nivelDano)
+                                    .sort(([,a], [,b]) => b - a)
+                                    .slice(0, 4)
+                                    .map(([dano, count], index) => (
+                                        <div key={dano} className="p-3 bg-red-50 rounded-lg">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-sm font-medium text-gray-900">{dano}</span>
+                                                <span className="text-sm font-bold text-red-600">{count}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    className={`${colors[index]} h-2 rounded-full transition-all`}
+                                                    style={{ width: `${(count / maxValue) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ));
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* Gráfico de Fabricantes */}
+                    <div>
+                        <h3 className="text-md font-semibold text-gray-800 mb-4">🏭 Principais Fabricantes</h3>
+                        <div className="space-y-2">
+                            {(() => {
+                                const fabricantes = validOcurrences.reduce((acc, occ) => {
+                                    const fabricante = occ.aeronave_fabricante ?? 'Não informado';
+                                    acc[fabricante] = (acc[fabricante] || 0) + 1;
+                                    return acc;
+                                }, {} as Record<string, number>);
+                                
+                                const maxValue = Math.max(...Object.values(fabricantes));
+                                
+                                return Object.entries(fabricantes)
+                                    .sort(([,a], [,b]) => b - a)
+                                    .slice(0, 5)
+                                    .map(([fabricante, count]) => (
+                                        <div key={fabricante} className="p-3 bg-purple-50 rounded-lg">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-sm font-medium text-gray-900">{fabricante}</span>
+                                                <span className="text-sm font-bold text-purple-600">{count}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    className="bg-purple-600 h-2 rounded-full transition-all"
+                                                    style={{ width: `${(count / maxValue) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ));
+                            })()}
                         </div>
                     </div>
 

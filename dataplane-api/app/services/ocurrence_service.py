@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from app.models.database import get_collection
-from app.models.schemas import OcurrenceCoordinates
+from app.models.schemas import OcurrenceCoordinates, OcurrenceWithAeronave, AeronaveData
 from app.utils.logger import app_logger
 
 
@@ -13,14 +13,13 @@ class OcurrenceService:
         try:
             collection = await get_collection("ocorrencia")
             
-            # Query simplificada para testar
+            # Query otimizada para filtrar coordenadas válidas no MongoDB
             query = {
                 "ocorrencia_latitude": {"$exists": True, "$ne": None},
                 "ocorrencia_longitude": {"$exists": True, "$ne": None}
             }
             
-            app_logger.info(f"Query sendo executada: {query}")
-            app_logger.info(f"Limit solicitado: {limit}, Skip: {skip}")
+            app_logger.info(f"Executando query com limit: {limit}, skip: {skip}")
             
             projection = {
                 "codigo_ocorrencia": 1,
@@ -30,90 +29,65 @@ class OcurrenceService:
                 "ocorrencia_uf": 1,
                 "ocorrencia_classificacao": 1,
                 "ocorrencia_dia": 1,
+                "ocorrencia_pais": 1,
+                "ocorrencia_aerodromo": 1,
+                "ocorrencia_hora": 1,
+                "investigacao_aeronave_liberada": 1,
+                "investigacao_status": 1,
+                "divulgacao_relatorio_numero": 1,
+                "divulgacao_relatorio_publicado": 1,
+                "divulgacao_dia_publicacao": 1,
+                "total_recomendacoes": 1,
+                "total_aeronaves_envolvidas": 1,
+                "ocorrencia_saida_pista": 1,
                 "_id": 0
             }
-            
             
             cursor = collection.find(query, projection).skip(skip).limit(limit)
             documents = await cursor.to_list(length=limit)
             
-            app_logger.info(f"Query executada - documentos encontrados: {len(documents)}")
-            app_logger.debug(f"Documentos da query: {documents}")
+            app_logger.info(f"Documentos encontrados: {len(documents)}")
             
             ocurrences = []
-            processed_count = 0
-            invalid_lat_count = 0
-            invalid_lon_count = 0
-            invalid_codigo_count = 0
-            validation_error_count = 0
+            invalid_count = 0
             
             for doc in documents:
-                processed_count += 1
                 try:
-                    app_logger.debug(f"Processando documento: {doc}")
-                    
-                    # Processa latitude
+                    # Processamento otimizado das coordenadas
                     lat = doc.get("ocorrencia_latitude")
-                    if lat is not None and lat != "" and str(lat).lower() != "nan":
-                        try:
-                            lat_float = float(str(lat).replace(",", "."))
-                            if -90 <= lat_float <= 90:
-                                doc["ocorrencia_latitude"] = lat_float
-                            else:
-                                app_logger.warning(f"Latitude fora do range válido: {lat_float}")
-                                invalid_lat_count += 1
-                                continue
-                        except (ValueError, TypeError):
-                            app_logger.warning(f"Latitude inválida: {lat}")
-                            invalid_lat_count += 1
-                            continue
-                    else:
-                        app_logger.warning(f"Latitude vazia ou nula: {lat}")
-                        invalid_lat_count += 1
-                        continue
-                    
-                    # Processa longitude
                     lon = doc.get("ocorrencia_longitude")
-                    if lon is not None and lon != "" and str(lon).lower() != "nan":
-                        try:
-                            lon_float = float(str(lon).replace(",", "."))
-                            if -180 <= lon_float <= 180:
-                                doc["ocorrencia_longitude"] = lon_float
-                            else:
-                                app_logger.warning(f"Longitude fora do range válido: {lon_float}")
-                                invalid_lon_count += 1
-                                continue
-                        except (ValueError, TypeError):
-                            app_logger.warning(f"Longitude inválida: {lon}")
-                            invalid_lon_count += 1
-                            continue
-                    else:
-                        app_logger.warning(f"Longitude vazia ou nula: {lon}")
-                        invalid_lon_count += 1
-                        continue
                     
-                    app_logger.debug(f"Documento após conversão: {doc}")
+                    # Converte coordenadas para float se necessário
+                    if isinstance(lat, str):
+                        lat = float(lat.replace(",", "."))
+                    if isinstance(lon, str):
+                        lon = float(lon.replace(",", "."))
+                    
+                    doc["ocorrencia_latitude"] = float(lat)
+                    doc["ocorrencia_longitude"] = float(lon)
                     
                     # Converte codigo_ocorrencia para string se necessário
                     if isinstance(doc.get("codigo_ocorrencia"), (int, float)):
                         doc["codigo_ocorrencia"] = str(doc["codigo_ocorrencia"])
                     
+                    # Converte campos numéricos se necessário
+                    for field in ["total_recomendacoes", "total_aeronaves_envolvidas"]:
+                        if field in doc and doc[field] is not None:
+                            try:
+                                doc[field] = int(doc[field])
+                            except (ValueError, TypeError):
+                                doc[field] = None
+                    
                     ocorrencia = OcurrenceCoordinates(**doc)
                     ocurrences.append(ocorrencia)
-                    app_logger.debug(f"Ocorrência criada com sucesso: {ocorrencia}")
+                    
                 except Exception as e:
-                    app_logger.warning(f"Erro ao processar ocorrência {doc.get('codigo_ocorrencia', 'unknown')}: {e}")
-                    app_logger.debug(f"Documento que causou erro: {doc}")
-                    validation_error_count += 1
+                    invalid_count += 1
+                    if invalid_count <= 10:  # Log apenas os primeiros 10 erros
+                        app_logger.warning(f"Erro ao processar ocorrência {doc.get('codigo_ocorrencia', 'unknown')}: {e}")
                     continue
             
-            app_logger.info(f"Estatísticas de processamento:")
-            app_logger.info(f"  - Total processado: {processed_count}")
-            app_logger.info(f"  - Latitude inválida: {invalid_lat_count}")
-            app_logger.info(f"  - Longitude inválida: {invalid_lon_count}")
-            app_logger.info(f"  - Erro de validação: {validation_error_count}")
-            app_logger.info(f"  - Válidos: {len(ocurrences)}")
-            app_logger.info(f"Encontradas {len(ocurrences)} ocorrências com coordenadas")
+            app_logger.info(f"Processamento concluído - Válidos: {len(ocurrences)}, Inválidos: {invalid_count}")
             return ocurrences
             
         except Exception as e:
