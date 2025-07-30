@@ -18,6 +18,13 @@ interface AppStore extends AppState {
   fetchAccidents: () => Promise<void>;
   fetchOcurrencesCoordinates: () => Promise<void>;
   clearStorageData: () => void;
+  // Filtros do mapa
+  filters: Record<string, string | string[]>;
+  setFilter: (filterId: string, value: string | string[]) => void;
+  clearFilters: () => void;
+  // Segmentação do gráfico
+  segmentBy: string;
+  setSegmentBy: (segmentBy: string) => void;
 }
 
 const initialState: AppState = {
@@ -29,12 +36,29 @@ const initialState: AppState = {
   ocurrencesTotal: 0,
   loading: false,
   error: null,
+  filters: {},
+  segmentBy: '',
 };
 
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
       ...initialState,
+      
+      // Funções de filtro
+      filters: {},
+      setFilter: (filterId: string, value: string | string[]) =>
+        set((state) => ({
+          filters: {
+            ...state.filters,
+            [filterId]: value
+          }
+        })),
+      clearFilters: () => set((state) => ({ filters: {} })),
+      
+      // Funções de segmentação
+      segmentBy: '',
+      setSegmentBy: (segmentBy: string) => set({ segmentBy }),
 
       setCurrentView: (view) => set({ currentView: view }),
 

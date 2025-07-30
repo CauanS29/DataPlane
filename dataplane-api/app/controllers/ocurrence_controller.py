@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
 from app.services.ocurrence_service import OcurrenceService
 from app.services.merged_ocurrence_service import MergedOcurrenceService
+from app.services.filter_options_service import FilterOptionsService
 from app.utils.logger import app_logger
 
 
@@ -140,6 +141,68 @@ async def get_ocurrences_coordinates(
         raise HTTPException(
             status_code=500, 
             detail=f"Erro interno do servidor ao buscar coordenadas de ocorrências: {str(e)}"
+        )
+
+
+@ocurrence_router.get("/filter-options")
+async def get_filter_options(
+    category: Optional[str] = Query(default=None, description="Categoria específica do filtro (opcional)")
+):
+    """
+    Retorna opções disponíveis para filtros/selects
+    
+    - **category** (opcional): Se especificado, retorna apenas as opções dessa categoria
+    - **Sem category**: Retorna todas as opções organizadas por categoria
+    
+    ### Categorias disponíveis:
+    - **Básicas**: states, cities, classifications, countries, aerodromes
+    - **Aeronaves**: aircraft_manufacturers, aircraft_types, aircraft_models, damage_levels
+    - **Operação**: aircraft_operators, operation_phases, operation_types
+    - **Investigação**: investigation_status, aircraft_released
+    - **Tipos**: occurrence_types, occurrence_type_categories
+    - **Fatores**: factor_names, factor_aspects, factor_areas
+    
+    ### Exemplos:
+    - `/filter-options` - Retorna todas as opções
+    - `/filter-options?category=states` - Retorna apenas estados
+    - `/filter-options?category=aircraft_manufacturers` - Retorna apenas fabricantes
+    """
+    try:
+        # Se category foi especificada, retorna apenas essa categoria
+        if category:
+            app_logger.info(f"Buscando opções para categoria específica: {category}")
+            
+            options = await FilterOptionsService.get_filter_options_by_category(category)
+            
+            if not options:
+                return {
+                    "category": category,
+                    "options": [],
+                    "count": 0,
+                    "message": f"Nenhuma opção encontrada para a categoria '{category}'"
+                }
+            
+            return {
+                "category": category,
+                "options": options,
+                "count": len(options)
+            }
+        
+        # Se não especificou category, retorna todas as opções
+        else:
+            app_logger.info("Buscando todas as opções de filtros")
+            result = await FilterOptionsService.get_all_filter_options()
+            return result
+        
+    except Exception as e:
+        error_msg = f"Erro ao buscar opções de filtros"
+        if category:
+            error_msg += f" para categoria {category}"
+        
+        app_logger.error(f"{error_msg}: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erro interno do servidor ao buscar opções de filtros: {str(e)}"
         )
 
 

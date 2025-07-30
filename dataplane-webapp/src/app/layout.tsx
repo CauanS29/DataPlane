@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ConfigProvider } from 'antd';
+import ptBR from 'antd/locale/pt_BR';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,7 +29,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ConfigProvider
+          locale={ptBR}
+          theme={{
+            token: {
+              colorPrimary: '#1677ff',
+              controlHeight: 38,
+            },
+          }}
+        >
+          {children}
+        </ConfigProvider>
       </body>
     </html>
   );

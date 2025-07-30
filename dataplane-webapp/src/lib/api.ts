@@ -76,6 +76,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getFilterOptions() {
+    const response = await this.client.get('/api/v1/ocurrence/filter-options');
+    return response.data;
+  }
+
   // Test connection
   async testConnection(): Promise<boolean> {
     try {

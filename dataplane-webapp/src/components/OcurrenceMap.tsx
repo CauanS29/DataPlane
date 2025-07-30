@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store";
 import { OcurrenceCoordinates } from "@/types";
@@ -12,6 +12,7 @@ import {
     Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
+import { Map, List, Plane, Activity, AlertTriangle, AlertCircle } from 'lucide-react';
 
 ChartJS.register(
     CategoryScale,
@@ -22,35 +23,37 @@ ChartJS.register(
     Legend
 );
 
-// Tipo para as geometrias do mapa
-interface GeoFeature {
-    properties?: {
+// Tipos para o mapa
+import { ComposableMapProps, GeographiesProps, GeographyProps, MarkerProps } from 'react-simple-maps';
+import { ExtendedFeature } from 'd3-geo';
+
+interface GeoFeature extends ExtendedFeature {
+    properties: {
         id?: string;
+        [key: string]: unknown;
     };
     rsmKey?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any;
 }
 
 const OcurrenceMap = () => {
-    const { ocurrences, fetchOcurrencesCoordinates, loading } = useAppStore();
-    const [selectedState, setSelectedState] = useState<string | null>(null);
+    const { ocurrences, fetchOcurrencesCoordinates, loading, filters, segmentBy } = useAppStore();
     const [isClient, setIsClient] = useState(false);
     const [activeTab, setActiveTab] = useState<string>("estados");
     const [mapComponents, setMapComponents] = useState<{
-        ComposableMap?: React.ComponentType<unknown>;
-        Geographies?: React.ComponentType<unknown>;
-        Geography?: React.ComponentType<unknown>;
-        Marker?: React.ComponentType<unknown>;
+        ComposableMap?: React.ComponentType<ComposableMapProps>;
+        Geographies?: React.ComponentType<GeographiesProps>;
+        Geography?: React.ComponentType<GeographyProps>;
+        Marker?: React.ComponentType<MarkerProps>;
     }>({});
     const [brTopoJson, setBrTopoJson] = useState<unknown>(null);
     const [geoCentroidFn, setGeoCentroidFn] = useState<((geo: GeoFeature) => [number, number]) | null>(null);
 
     useEffect(() => {
-        setIsClient(true);
         fetchOcurrencesCoordinates();
-        
-        // Carregar componentes e dados
+    }, [fetchOcurrencesCoordinates]);
+
+    // Carregar componentes e dados
+    useEffect(() => {
         const loadMapComponents = async () => {
             try {
                 const [mapMod, d3Mod, topoData] = await Promise.all([
@@ -66,28 +69,61 @@ const OcurrenceMap = () => {
                     Marker: mapMod.Marker,
                 });
                 
-                setGeoCentroidFn(() => d3Mod.geoCentroid);
+                setGeoCentroidFn(() => (geo: GeoFeature) => d3Mod.geoCentroid(geo));
                 setBrTopoJson(topoData.default);
-                
-                console.log("Todos os componentes carregados com sucesso");
+                setIsClient(true);
             } catch (error) {
                 console.error("Erro ao carregar componentes:", error);
             }
         };
 
-        if (typeof window !== "undefined") {
-            loadMapComponents();
-        }
-    }, [fetchOcurrencesCoordinates]);
+        loadMapComponents();
+    }, []);
 
     // Verificação de segurança para garantir que ocurrences seja um array
     const safeOcurrences = Array.isArray(ocurrences) ? ocurrences : [];
 
-    // Filtra apenas ocorrências com coordenadas válidas
-    const validOcurrences = safeOcurrences.filter(occ => 
-        occ.ocorrencia_latitude && occ.ocorrencia_longitude &&
-        occ.ocorrencia_latitude !== 0 && occ.ocorrencia_longitude !== 0
-    );
+    // Filtra apenas ocorrências com coordenadas válidas e aplica filtros
+    const validOcurrences = safeOcurrences.filter(occ => {
+        // Primeiro verifica as coordenadas
+        const hasValidCoordinates = occ.ocorrencia_latitude && occ.ocorrencia_longitude &&
+            occ.ocorrencia_latitude !== 0 && occ.ocorrencia_longitude !== 0;
+
+        if (!hasValidCoordinates) return false;
+
+        // Depois aplica os filtros ativos
+        return Object.entries(filters).every(([key, value]) => {
+            if (!value) return true; // Ignora filtros vazios
+
+            // Mapeamento dos IDs dos filtros para os campos da ocorrência
+            const filterMapping: Record<string, keyof typeof occ> = {
+                'state': 'ocorrencia_uf',
+                'city': 'ocorrencia_cidade',
+                'classification': 'ocorrencia_classificacao',
+                'aircraft_type': 'aeronave_tipo_veiculo',
+                'damage_level': 'aeronave_nivel_dano',
+                'operation_phase': 'aeronave_fase_operacao',
+                'operation_type': 'aeronave_tipo_operacao',
+                'aircraft_manufacturer': 'aeronave_fabricante',
+                'aircraft_model': 'aeronave_modelo',
+                'aircraft_operator': 'aeronave_operador_categoria',
+                'investigation_status': 'investigacao_status',
+                'occurrence_type': 'ocorrencia_tipo'
+            };
+
+            const field = filterMapping[key];
+            if (!field) return true; // Ignora filtros desconhecidos
+
+            const occValue = occ[field];
+            if (typeof occValue !== 'string') return true; // Ignora campos não string
+
+            // Compara ignorando case e removendo espaços extras
+            if (Array.isArray(value)) {
+                return value.length === 0 || value.some(v => occValue.trim().toLowerCase() === v.trim().toLowerCase());
+            }
+            return occValue.trim().toLowerCase() === value.trim().toLowerCase();
+        });
+    });
 
     // Agrupa ocorrências por UF
     const occurrencesByState = validOcurrences.reduce((acc, occ) => {
@@ -99,8 +135,11 @@ const OcurrenceMap = () => {
         return acc;
     }, {} as Record<string, OcurrenceCoordinates[]>);
 
-    // Ocorrências do estado selecionado
-    const selectedStateOccurrences = selectedState ? occurrencesByState[selectedState] || [] : [];
+    // Ocorrências dos estados selecionados
+    const selectedStates = Array.isArray(filters['state']) ? filters['state'] : (filters['state'] ? [filters['state']] : []);
+    const selectedStatesOccurrences = selectedStates.length > 0 
+        ? selectedStates.flatMap(state => occurrencesByState[state] || [])
+        : [];
 
     // Mapeamento de estados brasileiros
     const brazilStates = {
@@ -131,61 +170,137 @@ const OcurrenceMap = () => {
     // Função chamada quando um estado é clicado
     const handleStateClick = (state: string) => {
         console.log('Estado clicado:', state);
-        setSelectedState(selectedState === state ? null : state);
+        const currentSelectedStates = Array.isArray(filters['state']) ? filters['state'] : (filters['state'] ? [filters['state']] : []);
+        const newSelectedStates = currentSelectedStates.includes(state)
+            ? currentSelectedStates.filter((s: string) => s !== state)
+            : [...currentSelectedStates, state];
+        
+        // Atualiza o filtro no store global
+        const { setFilter } = useAppStore.getState();
+        setFilter('state', newSelectedStates);
     };
 
-    // Função para gerar dados dos gráficos
+    // Função auxiliar para gerar dados por campo
+    const generateDataByField = (data: OcurrenceCoordinates[], field: keyof OcurrenceCoordinates) => {
+        const counts: { [key: string]: number } = {};
+        data.forEach(occ => {
+            const key = (occ[field] as string) || 'Não informado';
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        return counts;
+    };
+
+    // Mapeamento de tipos de gráfico para campos de dados
+    const chartFieldMapping: { [key: string]: keyof OcurrenceCoordinates } = {
+        "classificacao": "ocorrencia_classificacao",
+        "aeronave": "aeronave_tipo_veiculo",
+        "fase": "aeronave_fase_operacao",
+        "dano": "aeronave_nivel_dano",
+        "occurrence_type": "ocorrencia_tipo"
+    };
+
+    // Opções para segmentação
+    const segmentOptions = [
+        { value: "", label: "Sem segmentação" },
+        { value: "ocorrencia_classificacao", label: "Por Classificação" },
+        { value: "aeronave_tipo_veiculo", label: "Por Tipo de Aeronave" },
+        { value: "aeronave_fase_operacao", label: "Por Fase de Operação" },
+        { value: "aeronave_nivel_dano", label: "Por Nível de Dano" },
+        { value: "ocorrencia_tipo", label: "Por Tipo de Ocorrência" },
+        { value: "aeronave_fabricante", label: "Por Fabricante" },
+        { value: "aeronave_operador_categoria", label: "Por Operador" },
+        { value: "investigacao_status", label: "Por Status da Investigação" }
+    ];
+
+    // Função para gerar dados dos gráficos com segmentação
     const generateChartData = (type: string) => {
+        const dataToAnalyze = selectedStates.length > 0 ? selectedStatesOccurrences : validOcurrences;
+        
+        // Se há segmentação ativa
+        if (segmentBy && segmentBy !== "") {
+            // Agrupa dados por categoria do gráfico e segmenta pelo campo selecionado
+            const segmentedData: { [key: string]: { [key: string]: number } } = {};
+            
+            dataToAnalyze.forEach(occ => {
+                // Valor do gráfico (estado, cidade, etc.)
+                let chartValue = "";
+                if (type === "estados") {
+                    chartValue = selectedStates.length > 0 ? (occ.ocorrencia_cidade as string) || 'Não informado' : (occ.ocorrencia_uf as string) || 'Não informado';
+                } else if (chartFieldMapping[type]) {
+                    chartValue = (occ[chartFieldMapping[type]] as string) || 'Não informado';
+                }
+                
+                // Valor da segmentação
+                const segmentValue = (occ[segmentBy as keyof OcurrenceCoordinates] as string) || 'Não informado';
+                
+                if (!segmentedData[chartValue]) {
+                    segmentedData[chartValue] = {};
+                }
+                
+                if (!segmentedData[chartValue][segmentValue]) {
+                    segmentedData[chartValue][segmentValue] = 0;
+                }
+                
+                segmentedData[chartValue][segmentValue]++;
+            });
+
+            // Converte para formato de gráfico de barras empilhadas
+            const chartLabels = Object.keys(segmentedData).sort();
+            const allSegmentValues = new Set<string>();
+            Object.values(segmentedData).forEach(segment => {
+                Object.keys(segment).forEach(key => allSegmentValues.add(key));
+            });
+
+            const segmentLabels = Array.from(allSegmentValues).sort();
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+                '#0C669B', '#1976D2', '#2196F3', '#42A5F5', '#64B5F6'
+            ];
+            
+            // Calcula o total de cada categoria para ordenação
+            const categoryTotals = chartLabels.map(label => {
+                const total = Object.values(segmentedData[label]).reduce((sum, count) => sum + count, 0);
+                return { label, total };
+            });
+            
+            // Ordena do maior para o menor e pega apenas os top 10
+            const sortedCategories = categoryTotals
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 10) // Limita a 10 itens
+                .map(item => item.label);
+            
+            const datasets = segmentLabels.map((segmentLabel, index) => ({
+                label: segmentLabel,
+                data: sortedCategories.map(chartLabel => segmentedData[chartLabel][segmentLabel] || 0),
+                backgroundColor: colors[index % colors.length],
+                borderColor: colors[index % colors.length],
+                borderWidth: 1,
+            }));
+
+            return {
+                labels: sortedCategories,
+                datasets: datasets
+            };
+        }
+        
+        // Caso padrão (sem segmentação)
         let data: { [key: string]: number } = {};
         
-        // Se há um estado selecionado, usa apenas os dados daquele estado
-        // Se não há estado selecionado, usa todos os dados
-        const dataToAnalyze = selectedState ? selectedStateOccurrences : validOcurrences;
-        
-        switch (type) {
-            case "estados":
-                if (selectedState) {
-                    // Se um estado está selecionado, mostra por cidade
-                    dataToAnalyze.forEach(occ => {
-                        const key = occ.ocorrencia_cidade || 'Cidade não informada';
-                        data[key] = (data[key] || 0) + 1;
-                    });
-                } else {
-                    // Se nenhum estado selecionado, mostra por estado
-                    data = Object.keys(occurrencesByState).reduce((acc, uf) => {
-                        acc[uf] = occurrencesByState[uf].length;
-                        return acc;
-                    }, {} as { [key: string]: number });
-                }
-                break;
-                
-            case "classificacao":
-                dataToAnalyze.forEach(occ => {
-                    const key = occ.ocorrencia_classificacao || 'Não informado';
-                    data[key] = (data[key] || 0) + 1;
-                });
-                break;
-                
-            case "aeronave":
-                dataToAnalyze.forEach(occ => {
-                    const key = occ.aeronave_tipo_veiculo || 'Não informado';
-                    data[key] = (data[key] || 0) + 1;
-                });
-                break;
-                
-            case "fase":
-                dataToAnalyze.forEach(occ => {
-                    const key = occ.aeronave_fase_operacao || 'Não informado';
-                    data[key] = (data[key] || 0) + 1;
-                });
-                break;
-                
-            case "dano":
-                dataToAnalyze.forEach(occ => {
-                    const key = occ.aeronave_nivel_dano || 'Não informado';
-                    data[key] = (data[key] || 0) + 1;
-                });
-                break;
+        // Caso especial para estados/cidades
+        if (type === "estados") {
+            if (selectedStates.length > 0) {
+                data = generateDataByField(dataToAnalyze, "ocorrencia_cidade");
+            } else {
+                data = Object.keys(occurrencesByState).reduce((acc, uf) => {
+                    acc[uf] = occurrencesByState[uf].length;
+                    return acc;
+                }, {} as { [key: string]: number });
+            }
+        } 
+        // Para todos os outros tipos, usa o mapeamento
+        else if (chartFieldMapping[type]) {
+            data = generateDataByField(dataToAnalyze, chartFieldMapping[type]);
         }
         
         // Ordenar por valor decrescente e pegar os top 10
@@ -196,8 +311,8 @@ const OcurrenceMap = () => {
         return {
             labels: sortedEntries.map(([key]) => key),
             datasets: [{
-                label: selectedState 
-                    ? `${brazilStates[selectedState as keyof typeof brazilStates] || selectedState} - ${dataToAnalyze.length || 0} ocorrências`
+                label: selectedStates.length > 0 
+                    ? `${selectedStates.map((s: string) => brazilStates[s as keyof typeof brazilStates] || s).join(', ')} - ${dataToAnalyze.length || 0} ocorrências`
                     : `Brasil - ${validOcurrences.length || 0} ocorrências`,
                 data: sortedEntries.map(([,value]) => value),
                 backgroundColor: [
@@ -213,61 +328,94 @@ const OcurrenceMap = () => {
     // Configuração dos gráficos
     const chartOptions = {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
-                display: false,
+                display: segmentBy !== "", // Mostra legenda quando há segmentação
+                position: 'bottom' as const,
+                labels: {
+                    padding: 10,
+                    font: {
+                        size: 10 // Diminui o tamanho da fonte das legendas
+                    },
+                    usePointStyle: true,
+                    pointStyle: 'circle'
+                }
             },
             title: {
                 display: false,
             },
+            tooltip: {
+                callbacks: {
+                    label: (context: { parsed: { y: number } }) => {
+                        return `${context.parsed.y} ocorrências`;
+                    }
+                }
+            }
         },
         scales: {
             y: {
+                stacked: segmentBy !== "", // Empilha barras quando há segmentação
                 beginAtZero: true,
                 ticks: {
                     stepSize: 1,
                 },
+                grid: {
+                    display: false
+                }
             },
+            x: {
+                stacked: segmentBy !== "", // Empilha barras quando há segmentação
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 45,
+                    padding: 10,
+                    autoSkip: false,
+                    callback: function(value: string | number, index: number) {
+                        // @ts-expect-error - Chart.js context type is not properly typed
+                        const labels = this.chart?.data?.labels;
+                        if (!labels) return '';
+                        const label = labels[index];
+                        if (typeof label === 'string') {
+                            return label.length > 15 ? label.substring(0, 15) + '...' : label;
+                        }
+                        return '';
+                    }
+                },
+                grid: {
+                    display: false,
+                    drawBorder: false,
+                }
+            }
         },
+        layout: {
+            padding: {
+                bottom: segmentBy !== "" ? 40 : 25 // Mais espaço quando há legendas embaixo
+            }
+        }
     };
 
     const { ComposableMap, Geographies, Geography, Marker } = mapComponents;
     const allComponentsLoaded = ComposableMap && Geographies && Geography && Marker && brTopoJson && geoCentroidFn;
 
-    console.log("Debug - isClient:", isClient, "allComponentsLoaded:", allComponentsLoaded);
 
-    if (!isClient || !allComponentsLoaded) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h1 className="text-lg font-semibold text-gray-900 mb-4">Mapa de Ocorrências</h1>
-                <div className="flex items-center justify-center h-64">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                        <p className="text-gray-500">Carregando mapa...</p>
-                        <p className="text-xs text-gray-400 mt-2">
-                            Client: {isClient ? '✓' : '✗'} | Components: {allComponentsLoaded ? '✓' : '✗'}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                            Map: {ComposableMap ? '✓' : '✗'} | Geo: {Geographies ? '✓' : '✗'} | Data: {brTopoJson ? '✓' : '✗'}
-                        </p>
-                    </div>
+
+    const LoadingState = () => (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h1 className="text-lg font-semibold text-gray-900 mb-4">Mapa de Ocorrências</h1>
+            <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-gray-500">
+                        {!isClient || !allComponentsLoaded ? 'Carregando mapa...' : 'Carregando ocorrências...'}
+                    </p>
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
 
-    if (loading) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h1 className="text-lg font-semibold text-gray-900 mb-4">Mapa de Ocorrências</h1>
-                <div className="flex items-center justify-center h-64">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                        <p className="text-gray-500">Carregando ocorrências...</p>
-                    </div>
-                </div>
-            </div>
-        );
+    if (!isClient || !allComponentsLoaded || loading) {
+        return <LoadingState />;
     }
 
     return (
@@ -276,9 +424,9 @@ const OcurrenceMap = () => {
                 Mapa de Ocorrências do Brasil ({validOcurrences.length || 0} pontos)
             </h1>
             
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-6 gap-6">
                 {/* Mapa do Brasil */}
-                <div className="xl:col-span-2">
+                <div className="xl:col-span-3">
                     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                         <div className="text-center mb-4">
                             <h3 className="text-lg font-semibold text-gray-800">Mapa Interativo do Brasil</h3>
@@ -304,7 +452,7 @@ const OcurrenceMap = () => {
                                                 {geographies.map((geo: GeoFeature) => {
                                                     const geoId = geo.properties?.id || 'unknown';
                                                     const stateColor = getStateColor(geoId);
-                                                    const isSelected = selectedState === geoId;
+                                                    const isSelected = selectedStates.includes(geoId);
                                                     
                                                     return (
                                                         <Geography
@@ -344,7 +492,8 @@ const OcurrenceMap = () => {
                                                     try {
                                                         const centroid = geoCentroidFn(geo);
                                                         const geoId = geo.properties?.id || 'unknown';
-                                                        const stateCount = occurrencesByState[geoId]?.length || 0;
+                                                        // Sempre mostra o total de ocorrências do estado
+                                                        const stateCount = ocurrences.filter(occ => occ.ocorrencia_uf === geoId).length || 0;
                                                         
                                                         return (
                                                             <Marker key={`${geo.rsmKey}-Label`} coordinates={centroid}>
@@ -365,7 +514,7 @@ const OcurrenceMap = () => {
                                                                         y={12}
                                                                         fontSize={10}
                                                                         textAnchor="middle"
-                                                                        fill="#0C669B"
+                                                                        fill="#1F2937"
                                                                         fontWeight="bold"
                                                                         style={{ pointerEvents: "none" }}
                                                                     >
@@ -412,19 +561,22 @@ const OcurrenceMap = () => {
                 </div>
 
                 {/* Painel de gráficos com tabs */}
-                <div className="space-y-6 max-h-[633px] overflow-y-auto">
+                <div className="xl:col-span-3 space-y-6 max-h-[633px] overflow-y-auto">
                     {/* Tabs de gráficos */}
                     <div>
                         <h3 className="text-md font-semibold text-gray-800 mb-4">📊 Análise por Gráficos</h3>
                         
+
+                        
                         {/* Tab navigation */}
                         <div className="flex flex-wrap gap-2 mb-4">
                             {[
-                                { id: "estados", label: "Por Estado", icon: "🗺️" },
-                                { id: "classificacao", label: "Classificação", icon: "📋" },
-                                { id: "aeronave", label: "Tipo Aeronave", icon: "✈️" },
-                                { id: "fase", label: "Fase Operação", icon: "🛫" },
-                                { id: "dano", label: "Nível Dano", icon: "⚠️" }
+                                { id: "estados", label: "Por Estado", icon: "map" },
+                                { id: "classificacao", label: "Classificação", icon: "list" },
+                                { id: "aeronave", label: "Tipo Aeronave", icon: "plane" },
+                                { id: "fase", label: "Fase Operação", icon: "activity" },
+                                { id: "dano", label: "Nível Dano", icon: "alert-triangle" },
+                                { id: "occurrence_type", label: "Tipo Ocorrência", icon: "alert-circle" }
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -435,14 +587,32 @@ const OcurrenceMap = () => {
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                                 >
-                                    {tab.icon} {tab.label}
+                                    {(() => {
+                                        const IconMap = {
+                                            map: Map,
+                                            list: List,
+                                            plane: Plane,
+                                            activity: Activity,
+                                            'alert-triangle': AlertTriangle,
+                                            'alert-circle': AlertCircle
+                                        };
+                                        const Icon = IconMap[tab.icon as keyof typeof IconMap];
+                                        return <Icon className="w-4 h-4 inline-block mr-1" />;
+                                    })()} {tab.label}
                                 </button>
                             ))}
                         </div>
 
                         {/* Gráfico */}
                         <div className="bg-white border border-gray-200 rounded-lg p-4">
-                            <div className="h-64">
+                            {segmentBy && segmentBy !== "" && (
+                                <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                                    <span className="text-blue-800 font-medium">
+                                        📊 Segmentando por: {segmentOptions.find(opt => opt.value === segmentBy)?.label}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="h-75">
                                 <Bar 
                                     data={generateChartData(activeTab)} 
                                     options={chartOptions}
@@ -451,63 +621,98 @@ const OcurrenceMap = () => {
                         </div>
                     </div>
 
-                    {/* Detalhes do estado selecionado */}
-                    {selectedState && selectedStateOccurrences.length > 0 && (
-                        <div className="border-t pt-4">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                                📍 {brazilStates[selectedState as keyof typeof brazilStates] || selectedState}
+                    {/* Estatísticas e Detalhes */}
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-semibold text-gray-700">
+                                {selectedStates.length > 0 
+                                    ? `📍 ${selectedStates.map(s => brazilStates[s as keyof typeof brazilStates] || s).join(', ')}`
+                                    : "📊 Estatísticas Gerais"
+                                }
                             </h4>
-                            <div className="mb-3 p-3 rounded-lg" style={{ backgroundColor: getStateColor(selectedState) + '20' }}>
-                                <div className="text-center">
-                                    <span className="text-2xl font-bold text-gray-900">
-                                        {selectedStateOccurrences.length || 0}
-                                    </span>
-                                    <p className="text-xs text-gray-700">ocorrências registradas</p>
+                            <span className="text-sm text-gray-500">
+                                {(selectedStates.length > 0 ? selectedStatesOccurrences.length : validOcurrences.length) || 0} ocorrências registradas
+                            </span>
+                        </div>
+
+                        {/* Estatísticas */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="p-3 bg-gradient-to-r from-red-50 to-red-100 rounded-lg">
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-red-800 mb-1">Fatalidades</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-red-700">
+                                            {(selectedStates.length > 0 ? selectedStatesOccurrences : validOcurrences)
+                                                .reduce((acc, occ) => acc + (occ.aeronave_fatalidades_total || 0), 0)}
+                                        </span>
+                                        <span className="text-xs text-red-600">ocorrências registradas</span>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div className="space-y-2">
-                                {selectedStateOccurrences.slice(0, 5).map((occ, index) => (
-                                    <div key={index} className="p-2 bg-gray-50 rounded text-xs">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="font-medium">#{occ.codigo_ocorrencia}</span>
-                                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
+                            <div className="p-3 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg">
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-orange-800 mb-1">Aeronaves Destruídas</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-orange-700">
+                                            {(selectedStates.length > 0 ? selectedStatesOccurrences : validOcurrences)
+                                                .filter(occ => occ.aeronave_nivel_dano?.toLowerCase().includes('destruída')).length}
+                                        </span>
+                                        <span className="text-xs text-orange-600">ocorrências registradas</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg">
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-yellow-800 mb-1">Saída de Pista</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-yellow-700">
+                                            {(selectedStates.length > 0 ? selectedStatesOccurrences : validOcurrences)
+                                                .filter(occ => occ.ocorrencia_saida_pista === 'SIM').length}
+                                        </span>
+                                        <span className="text-xs text-yellow-600">ocorrências registradas</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-blue-800 mb-1">Investigações em Curso</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xl font-bold text-blue-700">
+                                            {(selectedStates.length > 0 ? selectedStatesOccurrences : validOcurrences)
+                                                .filter(occ => occ.investigacao_status?.toLowerCase().includes('ativa')).length}
+                                        </span>
+                                        <span className="text-xs text-blue-600">ocorrências registradas</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Lista de ocorrências (só aparece quando estados estão selecionados) */}
+                        {selectedStates.length > 0 && (
+                            <div className="space-y-3">
+                                {selectedStatesOccurrences.slice(0, 5).map((occ, index) => (
+                                    <div key={index} className="p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-medium text-gray-900">#{occ.codigo_ocorrencia}</span>
+                                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">
                                                 {occ.ocorrencia_classificacao}
                                             </span>
                                         </div>
-                                        <p className="text-gray-600">📍 {occ.ocorrencia_cidade}</p>
-                                        <p className="text-gray-500">📅 {occ.ocorrencia_dia}</p>
+                                        <p className="text-sm text-gray-700 mb-1">📍 {occ.ocorrencia_cidade}</p>
+                                        <p className="text-sm text-gray-500">📅 {occ.ocorrencia_dia}</p>
                                     </div>
                                 ))}
-                                {selectedStateOccurrences.length > 5 && (
-                                    <p className="text-xs text-gray-500 text-center py-2">
-                                        +{(selectedStateOccurrences.length || 0) - 5} mais ocorrências
+                                
+                                {selectedStatesOccurrences.length > 5 && (
+                                    <p className="text-sm text-gray-500 text-center py-2">
+                                        +{selectedStatesOccurrences.length - 5} mais ocorrências
                                     </p>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* Estatísticas gerais */}
-                    <div className="border-t pt-4">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">📊 Estatísticas Gerais</h4>
-                        <div className="space-y-3">
-                            <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm" style={{ color: '#0C669B' }}>Total de Ocorrências</span>
-                                    <span className="font-bold" style={{ color: '#0C669B' }}>{validOcurrences.length || 0}</span>
-                                </div>
-                            </div>
-                            
-                            <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm" style={{ color: '#66B3D9' }}>Média por Estado</span>
-                                    <span className="font-bold" style={{ color: '#66B3D9' }}>
-                                        {Object.keys(occurrencesByState).length > 0 ? Math.round((validOcurrences.length || 0) / Object.keys(occurrencesByState).length) : 0}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
