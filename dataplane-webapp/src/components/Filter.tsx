@@ -74,12 +74,12 @@ export const Filter: React.FC<FilterProps> = ({ totalRecords, onFilterChange }) 
   return (
     <div className="p-6 space-y-6">
       {/* Resumo dos Filtros Ativos */}
-      <div className="bg-blue-50 p-4 rounded-lg">
+      {/* <div className="bg-blue-50 p-4 rounded-lg">
         <h4 className="text-sm font-medium text-blue-900 mb-2">Filtros Ativos</h4>
         <div className="text-sm text-blue-700">
           <p>Total de registros: <span className="font-bold">{totalRecords || 0}</span></p>
         </div>
-      </div>
+      </div> */}
 
       {/* Botão Limpar Filtros */}
       <div className="flex justify-end">

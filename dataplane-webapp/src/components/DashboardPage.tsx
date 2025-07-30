@@ -10,7 +10,7 @@ import OcurrenceMap from './OcurrenceMap';
 import Filter from './Filter';
 
 const DashboardPage: React.FC = () => {
-  const { accidents, fetchAccidents, ocurrencesTotal } = useAppStore();
+  const { accidents, fetchAccidents, ocurrencesTotal, filters } = useAppStore();
   const [selectedAccident, setSelectedAccident] = useState<AirAccident | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -19,6 +19,15 @@ const DashboardPage: React.FC = () => {
   }, [fetchAccidents]);
 
   const stats = calculateAccidentStats(accidents);
+
+  // Calcula filtros ativos
+  const activeFiltersCount = useMemo(() => {
+    return Object.entries(filters).filter(([key, value]) => {
+      if (!value) return false;
+      if (Array.isArray(value)) return value.length > 0;
+      return value.trim() !== '';
+    }).length;
+  }, [filters]);
 
   // Filtros desabilitados temporariamente - retorna todos os acidentes
   const filteredAccidents = useMemo(() => {
@@ -85,7 +94,12 @@ const DashboardPage: React.FC = () => {
       >
         <FilterIcon className="w-6 h-6" />
         
-        {/* Badge será adicionado quando filtros tiverem lógica */}
+        {/* Badge de filtros ativos */}
+        {activeFiltersCount > 0 && (
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+            {activeFiltersCount}
+          </span>
+        )}
         
         {/* Tooltip */}
         <span className="absolute bottom-full mb-3 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
