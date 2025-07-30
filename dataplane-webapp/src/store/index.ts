@@ -22,6 +22,9 @@ interface AppStore extends AppState {
   filters: Record<string, string | string[]>;
   setFilter: (filterId: string, value: string | string[]) => void;
   clearFilters: () => void;
+  // Segmentação do gráfico
+  segmentBy: string;
+  setSegmentBy: (segmentBy: string) => void;
 }
 
 const initialState: AppState = {
@@ -34,6 +37,7 @@ const initialState: AppState = {
   loading: false,
   error: null,
   filters: {},
+  segmentBy: '',
 };
 
 export const useAppStore = create<AppStore>()(
@@ -51,6 +55,10 @@ export const useAppStore = create<AppStore>()(
           }
         })),
       clearFilters: () => set((state) => ({ filters: {} })),
+      
+      // Funções de segmentação
+      segmentBy: '',
+      setSegmentBy: (segmentBy: string) => set({ segmentBy }),
 
       setCurrentView: (view) => set({ currentView: view }),
 

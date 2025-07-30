@@ -4,13 +4,14 @@ import { AirAccident } from '@/types';
 import { formatDate, formatNumber, getSeverityColor, calculateAccidentStats } from '@/lib/utils';
 import { MapPin, Calendar, AlertTriangle, Filter as FilterIcon, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Select } from 'antd';
 
 import toast from 'react-hot-toast';
 import OcurrenceMap from './OcurrenceMap';
 import Filter from './Filter';
 
 const DashboardPage: React.FC = () => {
-  const { accidents, fetchAccidents, ocurrencesTotal, filters } = useAppStore();
+  const { accidents, fetchAccidents, ocurrencesTotal, filters, segmentBy } = useAppStore();
   const [selectedAccident, setSelectedAccident] = useState<AirAccident | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -154,6 +155,53 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
 
+
+          {/* Select de Segmentação */}
+          <div className="p-4 border-b border-gray-200">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Segmentação do Gráfico</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Segmentar dados por:
+                </label>
+                <Select
+                  value={segmentBy || ""}
+                  onChange={(value) => {
+                    const { setSegmentBy } = useAppStore.getState();
+                    setSegmentBy(value);
+                  }}
+                  placeholder="Selecione a segmentação"
+                  className="w-full"
+                  size="small"
+                >
+                  <Select.Option value="">Sem segmentação</Select.Option>
+                  <Select.Option value="ocorrencia_classificacao">Por Classificação</Select.Option>
+                  <Select.Option value="aeronave_tipo_veiculo">Por Tipo de Aeronave</Select.Option>
+                  <Select.Option value="aeronave_fase_operacao">Por Fase de Operação</Select.Option>
+                  <Select.Option value="aeronave_nivel_dano">Por Nível de Dano</Select.Option>
+                  <Select.Option value="ocorrencia_tipo">Por Tipo de Ocorrência</Select.Option>
+                  <Select.Option value="aeronave_fabricante">Por Fabricante</Select.Option>
+                  <Select.Option value="aeronave_operador_categoria">Por Operador</Select.Option>
+                  <Select.Option value="investigacao_status">Por Status da Investigação</Select.Option>
+                </Select>
+              </div>
+              
+              {segmentBy && (
+                <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                  <span className="text-blue-800">
+                    📊 Segmentando por: {segmentBy === "ocorrencia_classificacao" ? "Classificação" :
+                    segmentBy === "aeronave_tipo_veiculo" ? "Tipo de Aeronave" :
+                    segmentBy === "aeronave_fase_operacao" ? "Fase de Operação" :
+                    segmentBy === "aeronave_nivel_dano" ? "Nível de Dano" :
+                    segmentBy === "ocorrencia_tipo" ? "Tipo de Ocorrência" :
+                    segmentBy === "aeronave_fabricante" ? "Fabricante" :
+                    segmentBy === "aeronave_operador_categoria" ? "Operador" :
+                    segmentBy === "investigacao_status" ? "Status da Investigação" : segmentBy}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Conteúdo dos filtros */}
           <Filter 

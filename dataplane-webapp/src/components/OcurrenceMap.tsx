@@ -36,7 +36,7 @@ interface GeoFeature extends ExtendedFeature {
 }
 
 const OcurrenceMap = () => {
-    const { ocurrences, fetchOcurrencesCoordinates, loading, filters } = useAppStore();
+    const { ocurrences, fetchOcurrencesCoordinates, loading, filters, segmentBy } = useAppStore();
     const [isClient, setIsClient] = useState(false);
     const [activeTab, setActiveTab] = useState<string>("estados");
     const [mapComponents, setMapComponents] = useState<{
@@ -199,10 +199,93 @@ const OcurrenceMap = () => {
         "occurrence_type": "ocorrencia_tipo"
     };
 
-    // Função para gerar dados dos gráficos
+    // Opções para segmentação
+    const segmentOptions = [
+        { value: "", label: "Sem segmentação" },
+        { value: "ocorrencia_classificacao", label: "Por Classificação" },
+        { value: "aeronave_tipo_veiculo", label: "Por Tipo de Aeronave" },
+        { value: "aeronave_fase_operacao", label: "Por Fase de Operação" },
+        { value: "aeronave_nivel_dano", label: "Por Nível de Dano" },
+        { value: "ocorrencia_tipo", label: "Por Tipo de Ocorrência" },
+        { value: "aeronave_fabricante", label: "Por Fabricante" },
+        { value: "aeronave_operador_categoria", label: "Por Operador" },
+        { value: "investigacao_status", label: "Por Status da Investigação" }
+    ];
+
+    // Função para gerar dados dos gráficos com segmentação
     const generateChartData = (type: string) => {
-        let data: { [key: string]: number } = {};
         const dataToAnalyze = selectedStates.length > 0 ? selectedStatesOccurrences : validOcurrences;
+        
+        // Se há segmentação ativa
+        if (segmentBy && segmentBy !== "") {
+            // Agrupa dados por categoria do gráfico e segmenta pelo campo selecionado
+            const segmentedData: { [key: string]: { [key: string]: number } } = {};
+            
+            dataToAnalyze.forEach(occ => {
+                // Valor do gráfico (estado, cidade, etc.)
+                let chartValue = "";
+                if (type === "estados") {
+                    chartValue = selectedStates.length > 0 ? (occ.ocorrencia_cidade as string) || 'Não informado' : (occ.ocorrencia_uf as string) || 'Não informado';
+                } else if (chartFieldMapping[type]) {
+                    chartValue = (occ[chartFieldMapping[type]] as string) || 'Não informado';
+                }
+                
+                // Valor da segmentação
+                const segmentValue = (occ[segmentBy as keyof OcurrenceCoordinates] as string) || 'Não informado';
+                
+                if (!segmentedData[chartValue]) {
+                    segmentedData[chartValue] = {};
+                }
+                
+                if (!segmentedData[chartValue][segmentValue]) {
+                    segmentedData[chartValue][segmentValue] = 0;
+                }
+                
+                segmentedData[chartValue][segmentValue]++;
+            });
+
+            // Converte para formato de gráfico de barras empilhadas
+            const chartLabels = Object.keys(segmentedData).sort();
+            const allSegmentValues = new Set<string>();
+            Object.values(segmentedData).forEach(segment => {
+                Object.keys(segment).forEach(key => allSegmentValues.add(key));
+            });
+
+            const segmentLabels = Array.from(allSegmentValues).sort();
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+                '#0C669B', '#1976D2', '#2196F3', '#42A5F5', '#64B5F6'
+            ];
+            
+            // Calcula o total de cada categoria para ordenação
+            const categoryTotals = chartLabels.map(label => {
+                const total = Object.values(segmentedData[label]).reduce((sum, count) => sum + count, 0);
+                return { label, total };
+            });
+            
+            // Ordena do maior para o menor e pega apenas os top 10
+            const sortedCategories = categoryTotals
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 10) // Limita a 10 itens
+                .map(item => item.label);
+            
+            const datasets = segmentLabels.map((segmentLabel, index) => ({
+                label: segmentLabel,
+                data: sortedCategories.map(chartLabel => segmentedData[chartLabel][segmentLabel] || 0),
+                backgroundColor: colors[index % colors.length],
+                borderColor: colors[index % colors.length],
+                borderWidth: 1,
+            }));
+
+            return {
+                labels: sortedCategories,
+                datasets: datasets
+            };
+        }
+        
+        // Caso padrão (sem segmentação)
+        let data: { [key: string]: number } = {};
         
         // Caso especial para estados/cidades
         if (type === "estados") {
@@ -248,7 +331,16 @@ const OcurrenceMap = () => {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                display: false,
+                display: segmentBy !== "", // Mostra legenda quando há segmentação
+                position: 'bottom' as const,
+                labels: {
+                    padding: 10,
+                    font: {
+                        size: 10 // Diminui o tamanho da fonte das legendas
+                    },
+                    usePointStyle: true,
+                    pointStyle: 'circle'
+                }
             },
             title: {
                 display: false,
@@ -263,6 +355,7 @@ const OcurrenceMap = () => {
         },
         scales: {
             y: {
+                stacked: segmentBy !== "", // Empilha barras quando há segmentação
                 beginAtZero: true,
                 ticks: {
                     stepSize: 1,
@@ -272,13 +365,15 @@ const OcurrenceMap = () => {
                 }
             },
             x: {
+                stacked: segmentBy !== "", // Empilha barras quando há segmentação
                 ticks: {
                     maxRotation: 45,
                     minRotation: 45,
                     padding: 10,
                     autoSkip: false,
-                                                        callback: function(value: string | number, index: number, values: any) {
-                        const labels = this.chart.data.labels;
+                    callback: function(value: string | number, index: number) {
+                        // @ts-expect-error - Chart.js context type is not properly typed
+                        const labels = this.chart?.data?.labels;
                         if (!labels) return '';
                         const label = labels[index];
                         if (typeof label === 'string') {
@@ -295,7 +390,7 @@ const OcurrenceMap = () => {
         },
         layout: {
             padding: {
-                bottom: 25 // Espaço extra para as legendas rotacionadas
+                bottom: segmentBy !== "" ? 40 : 25 // Mais espaço quando há legendas embaixo
             }
         }
     };
@@ -329,7 +424,7 @@ const OcurrenceMap = () => {
                 Mapa de Ocorrências do Brasil ({validOcurrences.length || 0} pontos)
             </h1>
             
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-6 gap-6">
                 {/* Mapa do Brasil */}
                 <div className="xl:col-span-3">
                     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -466,10 +561,12 @@ const OcurrenceMap = () => {
                 </div>
 
                 {/* Painel de gráficos com tabs */}
-                <div className="xl:col-span-2 space-y-6 max-h-[633px] overflow-y-auto">
+                <div className="xl:col-span-3 space-y-6 max-h-[633px] overflow-y-auto">
                     {/* Tabs de gráficos */}
                     <div>
                         <h3 className="text-md font-semibold text-gray-800 mb-4">📊 Análise por Gráficos</h3>
+                        
+
                         
                         {/* Tab navigation */}
                         <div className="flex flex-wrap gap-2 mb-4">
@@ -508,7 +605,14 @@ const OcurrenceMap = () => {
 
                         {/* Gráfico */}
                         <div className="bg-white border border-gray-200 rounded-lg p-4">
-                            <div className="h-80">
+                            {segmentBy && segmentBy !== "" && (
+                                <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                                    <span className="text-blue-800 font-medium">
+                                        📊 Segmentando por: {segmentOptions.find(opt => opt.value === segmentBy)?.label}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="h-75">
                                 <Bar 
                                     data={generateChartData(activeTab)} 
                                     options={chartOptions}
