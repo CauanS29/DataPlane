@@ -63,7 +63,7 @@ services:
       - .env
     environment:
       - MONGODB_URL=mongodb://host.docker.internal:27017
-    command: python /app/mongo-seeders/seed_database.py
+    command: python /app/run_seeders.py
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
