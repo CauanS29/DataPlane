@@ -61,6 +61,7 @@ export interface AppState {
   ocurrencesTotal: number;
   loading: boolean;
   error: string | null;
+  filters: Record<string, string | string[]>;
 }
 
 // Tipos para formulários

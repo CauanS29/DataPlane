@@ -4,7 +4,8 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverExternalPackages: ['@react-leaflet/core', 'leaflet']
-  }
+  },
+  transpilePackages: ['antd', '@ant-design/icons'],
 };
 
 module.exports = nextConfig;
