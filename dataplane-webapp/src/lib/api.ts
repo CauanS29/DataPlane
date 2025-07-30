@@ -72,7 +72,7 @@ class ApiClient {
   }
 
   async getOcurrencesCoordinates() {
-    const response = await this.client.get('/api/v1/ocurrence/coordinates');
+    const response = await this.client.get('/api/v1/ocurrence/coordinates?complete=true');
     return response.data;
   }
 

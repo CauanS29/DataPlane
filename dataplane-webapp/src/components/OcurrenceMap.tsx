@@ -2,19 +2,49 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store";
 import { OcurrenceCoordinates } from "@/types";
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend
+);
+
+// Tipo para as geometrias do mapa
+interface GeoFeature {
+    properties?: {
+        id?: string;
+    };
+    rsmKey?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+}
 
 const OcurrenceMap = () => {
     const { ocurrences, fetchOcurrencesCoordinates, loading } = useAppStore();
     const [selectedState, setSelectedState] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>("estados");
     const [mapComponents, setMapComponents] = useState<{
-        ComposableMap?: React.ComponentType<Record<string, unknown>>;
-        Geographies?: React.ComponentType<Record<string, unknown>>;
-        Geography?: React.ComponentType<Record<string, unknown>>;
-        Marker?: React.ComponentType<Record<string, unknown>>;
+        ComposableMap?: React.ComponentType<unknown>;
+        Geographies?: React.ComponentType<unknown>;
+        Geography?: React.ComponentType<unknown>;
+        Marker?: React.ComponentType<unknown>;
     }>({});
-    const [brTopoJson, setBrTopoJson] = useState<Record<string, unknown> | null>(null);
-    const [geoCentroidFn, setGeoCentroidFn] = useState<((geo: Record<string, unknown>) => [number, number]) | null>(null);
+    const [brTopoJson, setBrTopoJson] = useState<unknown>(null);
+    const [geoCentroidFn, setGeoCentroidFn] = useState<((geo: GeoFeature) => [number, number]) | null>(null);
 
     useEffect(() => {
         setIsClient(true);
@@ -104,6 +134,103 @@ const OcurrenceMap = () => {
         setSelectedState(selectedState === state ? null : state);
     };
 
+    // Função para gerar dados dos gráficos
+    const generateChartData = (type: string) => {
+        let data: { [key: string]: number } = {};
+        
+        // Se há um estado selecionado, usa apenas os dados daquele estado
+        // Se não há estado selecionado, usa todos os dados
+        const dataToAnalyze = selectedState ? selectedStateOccurrences : validOcurrences;
+        
+        switch (type) {
+            case "estados":
+                if (selectedState) {
+                    // Se um estado está selecionado, mostra por cidade
+                    dataToAnalyze.forEach(occ => {
+                        const key = occ.ocorrencia_cidade || 'Cidade não informada';
+                        data[key] = (data[key] || 0) + 1;
+                    });
+                } else {
+                    // Se nenhum estado selecionado, mostra por estado
+                    data = Object.keys(occurrencesByState).reduce((acc, uf) => {
+                        acc[uf] = occurrencesByState[uf].length;
+                        return acc;
+                    }, {} as { [key: string]: number });
+                }
+                break;
+                
+            case "classificacao":
+                dataToAnalyze.forEach(occ => {
+                    const key = occ.ocorrencia_classificacao || 'Não informado';
+                    data[key] = (data[key] || 0) + 1;
+                });
+                break;
+                
+            case "aeronave":
+                dataToAnalyze.forEach(occ => {
+                    const key = occ.aeronave_tipo_veiculo || 'Não informado';
+                    data[key] = (data[key] || 0) + 1;
+                });
+                break;
+                
+            case "fase":
+                dataToAnalyze.forEach(occ => {
+                    const key = occ.aeronave_fase_operacao || 'Não informado';
+                    data[key] = (data[key] || 0) + 1;
+                });
+                break;
+                
+            case "dano":
+                dataToAnalyze.forEach(occ => {
+                    const key = occ.aeronave_nivel_dano || 'Não informado';
+                    data[key] = (data[key] || 0) + 1;
+                });
+                break;
+        }
+        
+        // Ordenar por valor decrescente e pegar os top 10
+        const sortedEntries = Object.entries(data)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 10);
+            
+        return {
+            labels: sortedEntries.map(([key]) => key),
+            datasets: [{
+                label: selectedState 
+                    ? `${brazilStates[selectedState as keyof typeof brazilStates] || selectedState} - ${dataToAnalyze.length} ocorrências`
+                    : `Brasil - ${validOcurrences.length} ocorrências`,
+                data: sortedEntries.map(([,value]) => value),
+                backgroundColor: [
+                    '#0C669B', '#1976D2', '#2196F3', '#42A5F5', '#64B5F6',
+                    '#90CAF9', '#BBDEFB', '#E3F2FD', '#F5F5F5', '#EEEEEE'
+                ],
+                borderColor: '#0C669B',
+                borderWidth: 1,
+            }]
+        };
+    };
+
+    // Configuração dos gráficos
+    const chartOptions = {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false,
+            },
+            title: {
+                display: false,
+            },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1,
+                },
+            },
+        },
+    };
+
     const { ComposableMap, Geographies, Geography, Marker } = mapComponents;
     const allComponentsLoaded = ComposableMap && Geographies && Geography && Marker && brTopoJson && geoCentroidFn;
 
@@ -172,9 +299,9 @@ const OcurrenceMap = () => {
                                     height={480}
                                 >
                                     <Geographies geography={brTopoJson}>
-                                        {({ geographies }: { geographies: any[] }) => (
+                                        {({ geographies }: { geographies: GeoFeature[] }) => (
                                             <>
-                                                {geographies.map((geo: any) => {
+                                                {geographies.map((geo: GeoFeature) => {
                                                     const geoId = geo.properties?.id || 'unknown';
                                                     const stateColor = getStateColor(geoId);
                                                     const isSelected = selectedState === geoId;
@@ -213,7 +340,7 @@ const OcurrenceMap = () => {
                                                 })}
 
                                                 {/* Labels dos estados */}
-                                                {geographies.map((geo: any) => {
+                                                {geographies.map((geo: GeoFeature) => {
                                                     try {
                                                         const centroid = geoCentroidFn(geo);
                                                         const geoId = geo.properties?.id || 'unknown';
@@ -284,142 +411,43 @@ const OcurrenceMap = () => {
                     </div>
                 </div>
 
-                {/* Painel de gráficos e análises */}
+                {/* Painel de gráficos com tabs */}
                 <div className="space-y-6 max-h-[633px] overflow-y-auto">
-                    {/* Gráfico de Classificação de Ocorrências */}
+                    {/* Tabs de gráficos */}
                     <div>
-                        <h3 className="text-md font-semibold text-gray-800 mb-4">📊 Classificação das Ocorrências</h3>
-                        <div className="space-y-2">
-                            {(() => {
-                                const classificacoes = validOcurrences.reduce((acc, occ) => {
-                                    const classificacao = occ.ocorrencia_classificacao ?? 'Não informado';
-                                    acc[classificacao] = (acc[classificacao] || 0) + 1;
-                                    return acc;
-                                }, {} as Record<string, number>);
-                                
-                                const maxValue = Math.max(...Object.values(classificacoes));
-                                
-                                return Object.entries(classificacoes)
-                                    .sort(([,a], [,b]) => b - a)
-                                    .slice(0, 5)
-                                    .map(([classificacao, count]) => (
-                                        <div key={classificacao} className="p-3 bg-gray-50 rounded-lg">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-sm font-medium text-gray-900">{classificacao}</span>
-                                                <span className="text-sm font-bold text-blue-600">{count}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div 
-                                                    className="bg-blue-600 h-2 rounded-full transition-all"
-                                                    style={{ width: `${(count / maxValue) * 100}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    ));
-                            })()}
+                        <h3 className="text-md font-semibold text-gray-800 mb-4">📊 Análise por Gráficos</h3>
+                        
+                        {/* Tab navigation */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {[
+                                { id: "estados", label: "Por Estado", icon: "🗺️" },
+                                { id: "classificacao", label: "Classificação", icon: "📋" },
+                                { id: "aeronave", label: "Tipo Aeronave", icon: "✈️" },
+                                { id: "fase", label: "Fase Operação", icon: "🛫" },
+                                { id: "dano", label: "Nível Dano", icon: "⚠️" }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-3 py-2 text-xs rounded-lg transition-colors ${
+                                        activeTab === tab.id
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {tab.icon} {tab.label}
+                                </button>
+                            ))}
                         </div>
-                    </div>
 
-                    {/* Gráfico de Tipos de Aeronave */}
-                    <div>
-                        <h3 className="text-md font-semibold text-gray-800 mb-4">✈️ Tipos de Aeronave</h3>
-                        <div className="space-y-2">
-                            {(() => {
-                                const tiposAeronave = validOcurrences.reduce((acc, occ) => {
-                                    const tipo = occ.aeronave_tipo_veiculo ?? 'Não informado';
-                                    acc[tipo] = (acc[tipo] || 0) + 1;
-                                    return acc;
-                                }, {} as Record<string, number>);
-                                
-                                const maxValue = Math.max(...Object.values(tiposAeronave));
-                                
-                                return Object.entries(tiposAeronave)
-                                    .sort(([,a], [,b]) => b - a)
-                                    .slice(0, 4)
-                                    .map(([tipo, count]) => (
-                                        <div key={tipo} className="p-3 bg-green-50 rounded-lg">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-sm font-medium text-gray-900">{tipo}</span>
-                                                <span className="text-sm font-bold text-green-600">{count}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div 
-                                                    className="bg-green-600 h-2 rounded-full transition-all"
-                                                    style={{ width: `${(count / maxValue) * 100}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    ));
-                            })()}
-                        </div>
-                    </div>
-
-                    {/* Gráfico de Nível de Dano */}
-                    <div>
-                        <h3 className="text-md font-semibold text-gray-800 mb-4">⚠️ Nível de Dano</h3>
-                        <div className="space-y-2">
-                            {(() => {
-                                const nivelDano = validOcurrences.reduce((acc, occ) => {
-                                    const dano = occ.aeronave_nivel_dano ?? 'Não informado';
-                                    acc[dano] = (acc[dano] || 0) + 1;
-                                    return acc;
-                                }, {} as Record<string, number>);
-                                
-                                const maxValue = Math.max(...Object.values(nivelDano));
-                                const colors = ['bg-red-600', 'bg-orange-600', 'bg-yellow-600', 'bg-green-600'];
-                                
-                                return Object.entries(nivelDano)
-                                    .sort(([,a], [,b]) => b - a)
-                                    .slice(0, 4)
-                                    .map(([dano, count], index) => (
-                                        <div key={dano} className="p-3 bg-red-50 rounded-lg">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-sm font-medium text-gray-900">{dano}</span>
-                                                <span className="text-sm font-bold text-red-600">{count}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div 
-                                                    className={`${colors[index]} h-2 rounded-full transition-all`}
-                                                    style={{ width: `${(count / maxValue) * 100}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    ));
-                            })()}
-                        </div>
-                    </div>
-
-                    {/* Gráfico de Fabricantes */}
-                    <div>
-                        <h3 className="text-md font-semibold text-gray-800 mb-4">🏭 Principais Fabricantes</h3>
-                        <div className="space-y-2">
-                            {(() => {
-                                const fabricantes = validOcurrences.reduce((acc, occ) => {
-                                    const fabricante = occ.aeronave_fabricante ?? 'Não informado';
-                                    acc[fabricante] = (acc[fabricante] || 0) + 1;
-                                    return acc;
-                                }, {} as Record<string, number>);
-                                
-                                const maxValue = Math.max(...Object.values(fabricantes));
-                                
-                                return Object.entries(fabricantes)
-                                    .sort(([,a], [,b]) => b - a)
-                                    .slice(0, 5)
-                                    .map(([fabricante, count]) => (
-                                        <div key={fabricante} className="p-3 bg-purple-50 rounded-lg">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-sm font-medium text-gray-900">{fabricante}</span>
-                                                <span className="text-sm font-bold text-purple-600">{count}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div 
-                                                    className="bg-purple-600 h-2 rounded-full transition-all"
-                                                    style={{ width: `${(count / maxValue) * 100}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    ));
-                            })()}
+                        {/* Gráfico */}
+                        <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            <div className="h-64">
+                                <Bar 
+                                    data={generateChartData(activeTab)} 
+                                    options={chartOptions}
+                                />
+                            </div>
                         </div>
                     </div>
 

@@ -110,8 +110,8 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         currentView: state.currentView,
         isAuthenticated: state.isAuthenticated,
-        accidents: state.accidents,
-        ocurrences: state.ocurrences,
+        // Removido: accidents e ocurrences para evitar quota exceeded
+        // Esses dados são grandes e podem ser rebuscados quando necessário
       }),
     }
   )
