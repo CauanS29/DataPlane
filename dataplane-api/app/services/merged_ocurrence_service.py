@@ -7,13 +7,34 @@ class MergedOcurrenceService:
     """Serviço para gerenciar dados mesclados de ocorrências"""
     
     @staticmethod
-    async def get_merged_ocurrences_with_coordinates(limit: int = 20000, skip: int = 0) -> List[dict]:
+    async def get_merged_ocurrences_with_coordinates(
+        limit: int = 20000, 
+        skip: int = 0,
+        states: Optional[List[str]] = None,
+        cities: Optional[List[str]] = None,
+        classifications: Optional[List[str]] = None,
+        countries: Optional[List[str]] = None,
+        aircraft_manufacturers: Optional[List[str]] = None,
+        aircraft_types: Optional[List[str]] = None,
+        damage_levels: Optional[List[str]] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None
+    ) -> List[dict]:
         """
         Busca ocorrências com coordenadas da collection mesclada (com todos os dados)
         
         Args:
             limit: Limite de resultados  
             skip: Número de documentos para pular
+            states: Lista de estados para filtrar
+            cities: Lista de cidades para filtrar
+            classifications: Lista de classificações para filtrar
+            countries: Lista de países para filtrar
+            aircraft_manufacturers: Lista de fabricantes de aeronaves
+            aircraft_types: Lista de tipos de aeronaves
+            damage_levels: Lista de níveis de dano
+            date_start: Data inicial (formato string)
+            date_end: Data final (formato string)
             
         Returns:
             Lista de ocorrências completas com todos os dados mesclados
@@ -26,6 +47,35 @@ class MergedOcurrenceService:
                 "ocorrencia_latitude": {"$exists": True, "$ne": None, "$ne": ""},
                 "ocorrencia_longitude": {"$exists": True, "$ne": None, "$ne": ""}
             }
+            
+            # Adiciona filtros customizados
+            if states:
+                query["ocorrencia_uf"] = {"$in": states}
+            
+            if cities:
+                query["ocorrencia_cidade"] = {"$in": cities}
+                
+            if classifications:
+                query["ocorrencia_classificacao"] = {"$in": classifications}
+                
+            if countries:
+                query["ocorrencia_pais"] = {"$in": countries}
+                
+            if aircraft_manufacturers:
+                query["aeronave_fabricante"] = {"$in": aircraft_manufacturers}
+                
+            if aircraft_types:
+                query["aeronave_tipo_veiculo"] = {"$in": aircraft_types}
+                
+            if damage_levels:
+                query["aeronave_nivel_dano"] = {"$in": damage_levels}
+                
+            if date_start and date_end:
+                query["ocorrencia_dia"] = {"$gte": date_start, "$lte": date_end}
+            elif date_start:
+                query["ocorrencia_dia"] = {"$gte": date_start}
+            elif date_end:
+                query["ocorrencia_dia"] = {"$lte": date_end}
             
             app_logger.info(f"Executando query na collection mesclada - limit: {limit}, skip: {skip}")
             
@@ -160,7 +210,17 @@ class MergedOcurrenceService:
             raise
     
     @staticmethod
-    async def count_merged_ocurrences_with_coordinates() -> int:
+    async def count_merged_ocurrences_with_coordinates(
+        states: Optional[List[str]] = None,
+        cities: Optional[List[str]] = None,
+        classifications: Optional[List[str]] = None,
+        countries: Optional[List[str]] = None,
+        aircraft_manufacturers: Optional[List[str]] = None,
+        aircraft_types: Optional[List[str]] = None,
+        damage_levels: Optional[List[str]] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None
+    ) -> int:
         """
         Conta o total de ocorrências com coordenadas na collection mesclada
         
@@ -174,6 +234,35 @@ class MergedOcurrenceService:
                 "ocorrencia_latitude": {"$exists": True, "$ne": None, "$ne": ""},
                 "ocorrencia_longitude": {"$exists": True, "$ne": None, "$ne": ""}
             }
+            
+            # Adiciona os mesmos filtros customizados
+            if states:
+                query["ocorrencia_uf"] = {"$in": states}
+            
+            if cities:
+                query["ocorrencia_cidade"] = {"$in": cities}
+                
+            if classifications:
+                query["ocorrencia_classificacao"] = {"$in": classifications}
+                
+            if countries:
+                query["ocorrencia_pais"] = {"$in": countries}
+                
+            if aircraft_manufacturers:
+                query["aeronave_fabricante"] = {"$in": aircraft_manufacturers}
+                
+            if aircraft_types:
+                query["aeronave_tipo_veiculo"] = {"$in": aircraft_types}
+                
+            if damage_levels:
+                query["aeronave_nivel_dano"] = {"$in": damage_levels}
+                
+            if date_start and date_end:
+                query["ocorrencia_dia"] = {"$gte": date_start, "$lte": date_end}
+            elif date_start:
+                query["ocorrencia_dia"] = {"$gte": date_start}
+            elif date_end:
+                query["ocorrencia_dia"] = {"$lte": date_end}
             
             count = await collection.count_documents(query)
             return count

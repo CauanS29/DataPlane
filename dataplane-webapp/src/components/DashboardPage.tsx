@@ -13,9 +13,11 @@ const DashboardPage: React.FC = () => {
   const { filters, setFilters, resetFilters } = useDashboardStore();
   const [selectedAccident, setSelectedAccident] = useState<AirAccident | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     fetchAccidents();
+    setIsMounted(true);
   }, [fetchAccidents]);
 
   const stats = calculateAccidentStats(accidents);
@@ -101,15 +103,15 @@ const DashboardPage: React.FC = () => {
         <Filter className="w-6 h-6" />
         
         {/* Indicador de filtros ativos */}
-        {(filters.dateRange.start || filters.dateRange.end || filters.severity.length > 0 || filters.phase.length > 0 || filters.country.length > 0) && (
+        {isMounted && (filters.dateRange.start || filters.dateRange.end || filters.severity.length > 0 || filters.phase.length > 0 || filters.country.length > 0) && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
             {[
               filters.dateRange.start ? 1 : 0,
               filters.dateRange.end ? 1 : 0,
-              filters.severity.length,
-              filters.phase.length,
-              filters.country.length
-            ].reduce((sum, count) => sum + count, 0)}
+              filters.severity.length || 0,
+              filters.phase.length || 0,
+              filters.country.length || 0
+            ].reduce((sum, count) => (sum || 0) + (count || 0), 0)}
           </span>
         )}
         
@@ -161,20 +163,20 @@ const DashboardPage: React.FC = () => {
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Filtros Ativos</h4>
               <div className="text-sm text-blue-700">
-                <p>Total de registros: <span className="font-bold">{filteredAccidents.length}</span></p>
-                {filters.dateRange.start && (
+                <p>Total de registros: <span className="font-bold">{filteredAccidents.length || 0}</span></p>
+                {isMounted && filters.dateRange.start && (
                   <p>Data início: {new Date(filters.dateRange.start).toLocaleDateString('pt-BR')}</p>
                 )}
-                {filters.dateRange.end && (
+                {isMounted && filters.dateRange.end && (
                   <p>Data fim: {new Date(filters.dateRange.end).toLocaleDateString('pt-BR')}</p>
                 )}
-                {filters.severity.length > 0 && (
+                {isMounted && filters.severity.length > 0 && (
                   <p>Severidade: {filters.severity.join(', ')}</p>
                 )}
-                {filters.phase.length > 0 && (
+                {isMounted && filters.phase.length > 0 && (
                   <p>Fase: {filters.phase.join(', ')}</p>
                 )}
-                {filters.country.length > 0 && (
+                {isMounted && filters.country.length > 0 && (
                   <p>País: {filters.country.join(', ')}</p>
                 )}
               </div>
@@ -210,8 +212,8 @@ const DashboardPage: React.FC = () => {
                 onChange={(e) => setFilters({ severity: e.target.value ? [e.target.value] : [] })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Todas ({new Set(accidents.map(acc => acc.severity)).size} tipos)</option>
-                {Array.from(new Set(accidents.map(acc => acc.severity))).sort().map(severity => (
+                <option value="">Todas ({accidents.length > 0 ? new Set(accidents.map(acc => acc.severity || '')).size : 0} tipos)</option>
+                {Array.from(new Set(accidents.map(acc => acc.severity || ''))).filter(s => s).sort().map(severity => (
                   <option key={severity} value={severity}>
                     {severity === 'minor' ? 'Menor' : severity === 'major' ? 'Maior' : severity === 'fatal' ? 'Fatal' : severity}
                     ({accidents.filter(acc => acc.severity === severity).length})
@@ -228,8 +230,8 @@ const DashboardPage: React.FC = () => {
                 onChange={(e) => setFilters({ phase: e.target.value ? [e.target.value] : [] })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Todas ({new Set(accidents.map(acc => acc.phase)).size} fases)</option>
-                {Array.from(new Set(accidents.map(acc => acc.phase))).sort().map(phase => (
+                <option value="">Todas ({accidents.length > 0 ? new Set(accidents.map(acc => acc.phase || '')).size : 0} fases)</option>
+                {Array.from(new Set(accidents.map(acc => acc.phase || ''))).filter(p => p).sort().map(phase => (
                   <option key={phase} value={phase}>
                     {phase === 'takeoff' ? 'Decolagem' : 
                      phase === 'landing' ? 'Pouso' : 
@@ -249,10 +251,10 @@ const DashboardPage: React.FC = () => {
                 onChange={(e) => setFilters({ country: e.target.value ? [e.target.value] : [] })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Todos ({new Set(accidents.map(acc => acc.location.country)).size} países)</option>
-                {Array.from(new Set(accidents.map(acc => acc.location.country))).sort().map(country => (
+                <option value="">Todos ({accidents.length > 0 ? new Set(accidents.map(acc => acc.location?.country || '')).size : 0} países)</option>
+                {Array.from(new Set(accidents.map(acc => acc.location?.country || ''))).filter(c => c).sort().map(country => (
                   <option key={country} value={country}>
-                    {country} ({accidents.filter(acc => acc.location.country === country).length})
+                    {country} ({accidents.filter(acc => acc.location?.country === country).length})
                   </option>
                 ))}
               </select>
@@ -262,13 +264,13 @@ const DashboardPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Aeronave</label>
               <select
-                value=""
+                defaultValue=""
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Todos ({new Set(accidents.map(acc => acc.aircraft.type)).size} tipos)</option>
-                {Array.from(new Set(accidents.map(acc => acc.aircraft.type))).sort().map(type => (
+                <option value="">Todos ({accidents.length > 0 ? new Set(accidents.map(acc => acc.aircraft?.type || '')).size : 0} tipos)</option>
+                {Array.from(new Set(accidents.map(acc => acc.aircraft?.type || ''))).filter(t => t).sort().map(type => (
                   <option key={type} value={type}>
-                    {type} ({accidents.filter(acc => acc.aircraft.type === type).length})
+                    {type} ({accidents.filter(acc => acc.aircraft?.type === type).length})
                   </option>
                 ))}
               </select>
@@ -310,7 +312,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total de Acidentes</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(ocurrencesTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatNumber(ocurrencesTotal || 0)}</p>
             </div>
           </div>
         </div>
@@ -322,7 +324,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Fatalidades</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.fatalities)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.fatalities || 0)}</p>
             </div>
           </div>
         </div>
@@ -349,7 +351,7 @@ const DashboardPage: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Países Afetados</p>
               <p className="text-2xl font-bold text-gray-900">
-                {new Set(accidents.map(acc => acc.location.country)).size}
+                {accidents.length > 0 ? new Set(accidents.map(acc => acc.location?.country).filter(c => c)).size : 0}
               </p>
             </div>
           </div>

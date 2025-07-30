@@ -8,7 +8,16 @@ class OcurrenceService:
     """Serviço para gerenciar ocorrências"""
     
     @staticmethod
-    async def get_ocurrences_with_coordinates(limit: int = 20000, skip: int = 0) -> List[OcurrenceCoordinates]:
+    async def get_ocurrences_with_coordinates(
+        limit: int = 20000, 
+        skip: int = 0,
+        states: Optional[List[str]] = None,
+        cities: Optional[List[str]] = None,
+        classifications: Optional[List[str]] = None,
+        countries: Optional[List[str]] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None
+    ) -> List[OcurrenceCoordinates]:
    
         try:
             collection = await get_collection("ocorrencia")
@@ -18,6 +27,26 @@ class OcurrenceService:
                 "ocorrencia_latitude": {"$exists": True, "$ne": None},
                 "ocorrencia_longitude": {"$exists": True, "$ne": None}
             }
+            
+            # Adiciona filtros customizados
+            if states:
+                query["ocorrencia_uf"] = {"$in": states}
+            
+            if cities:
+                query["ocorrencia_cidade"] = {"$in": cities}
+                
+            if classifications:
+                query["ocorrencia_classificacao"] = {"$in": classifications}
+                
+            if countries:
+                query["ocorrencia_pais"] = {"$in": countries}
+                
+            if date_start and date_end:
+                query["ocorrencia_dia"] = {"$gte": date_start, "$lte": date_end}
+            elif date_start:
+                query["ocorrencia_dia"] = {"$gte": date_start}
+            elif date_end:
+                query["ocorrencia_dia"] = {"$lte": date_end}
             
             app_logger.info(f"Executando query com limit: {limit}, skip: {skip}")
             
@@ -95,7 +124,14 @@ class OcurrenceService:
             raise
     
     @staticmethod
-    async def count_ocurrences_with_coordinates() -> int:
+    async def count_ocurrences_with_coordinates(
+        states: Optional[List[str]] = None,
+        cities: Optional[List[str]] = None,
+        classifications: Optional[List[str]] = None,
+        countries: Optional[List[str]] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None
+    ) -> int:
         """
         Conta o total de ocorrências que possuem coordenadas válidas
         
@@ -109,6 +145,26 @@ class OcurrenceService:
                 "ocorrencia_latitude": {"$exists": True, "$ne": None},
                 "ocorrencia_longitude": {"$exists": True, "$ne": None}
             }
+            
+            # Adiciona os mesmos filtros customizados
+            if states:
+                query["ocorrencia_uf"] = {"$in": states}
+            
+            if cities:
+                query["ocorrencia_cidade"] = {"$in": cities}
+                
+            if classifications:
+                query["ocorrencia_classificacao"] = {"$in": classifications}
+                
+            if countries:
+                query["ocorrencia_pais"] = {"$in": countries}
+                
+            if date_start and date_end:
+                query["ocorrencia_dia"] = {"$gte": date_start, "$lte": date_end}
+            elif date_start:
+                query["ocorrencia_dia"] = {"$gte": date_start}
+            elif date_end:
+                query["ocorrencia_dia"] = {"$lte": date_end}
             
             count = await collection.count_documents(query)
             return count

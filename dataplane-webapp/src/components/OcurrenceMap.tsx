@@ -197,8 +197,8 @@ const OcurrenceMap = () => {
             labels: sortedEntries.map(([key]) => key),
             datasets: [{
                 label: selectedState 
-                    ? `${brazilStates[selectedState as keyof typeof brazilStates] || selectedState} - ${dataToAnalyze.length} ocorrências`
-                    : `Brasil - ${validOcurrences.length} ocorrências`,
+                    ? `${brazilStates[selectedState as keyof typeof brazilStates] || selectedState} - ${dataToAnalyze.length || 0} ocorrências`
+                    : `Brasil - ${validOcurrences.length || 0} ocorrências`,
                 data: sortedEntries.map(([,value]) => value),
                 backgroundColor: [
                     '#0C669B', '#1976D2', '#2196F3', '#42A5F5', '#64B5F6',
@@ -273,7 +273,7 @@ const OcurrenceMap = () => {
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h1 className="text-lg font-semibold text-gray-900 mb-4">
-                Mapa de Ocorrências do Brasil ({validOcurrences.length} pontos)
+                Mapa de Ocorrências do Brasil ({validOcurrences.length || 0} pontos)
             </h1>
             
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -369,7 +369,7 @@ const OcurrenceMap = () => {
                                                                         fontWeight="bold"
                                                                         style={{ pointerEvents: "none" }}
                                                                     >
-                                                                        {stateCount}
+                                                                        {stateCount || 0}
                                                                     </text>
                                                                 )}
                                                             </Marker>
@@ -460,7 +460,7 @@ const OcurrenceMap = () => {
                             <div className="mb-3 p-3 rounded-lg" style={{ backgroundColor: getStateColor(selectedState) + '20' }}>
                                 <div className="text-center">
                                     <span className="text-2xl font-bold text-gray-900">
-                                        {selectedStateOccurrences.length}
+                                        {selectedStateOccurrences.length || 0}
                                     </span>
                                     <p className="text-xs text-gray-700">ocorrências registradas</p>
                                 </div>
@@ -481,7 +481,7 @@ const OcurrenceMap = () => {
                                 ))}
                                 {selectedStateOccurrences.length > 5 && (
                                     <p className="text-xs text-gray-500 text-center py-2">
-                                        +{selectedStateOccurrences.length - 5} mais ocorrências
+                                        +{(selectedStateOccurrences.length || 0) - 5} mais ocorrências
                                     </p>
                                 )}
                             </div>
@@ -495,7 +495,7 @@ const OcurrenceMap = () => {
                             <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm" style={{ color: '#0C669B' }}>Total de Ocorrências</span>
-                                    <span className="font-bold" style={{ color: '#0C669B' }}>{validOcurrences.length}</span>
+                                    <span className="font-bold" style={{ color: '#0C669B' }}>{validOcurrences.length || 0}</span>
                                 </div>
                             </div>
                             
@@ -503,7 +503,7 @@ const OcurrenceMap = () => {
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm" style={{ color: '#66B3D9' }}>Média por Estado</span>
                                     <span className="font-bold" style={{ color: '#66B3D9' }}>
-                                        {Math.round(validOcurrences.length / Object.keys(occurrencesByState).length)}
+                                        {Object.keys(occurrencesByState).length > 0 ? Math.round((validOcurrences.length || 0) / Object.keys(occurrencesByState).length) : 0}
                                     </span>
                                 </div>
                             </div>

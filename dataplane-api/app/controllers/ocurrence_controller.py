@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query, HTTPException
+from typing import List, Optional
 from app.services.ocurrence_service import OcurrenceService
 from app.services.merged_ocurrence_service import MergedOcurrenceService
 from app.utils.logger import app_logger
@@ -16,18 +17,41 @@ async def get_ocurrence():
 async def get_ocurrences_coordinates(
     limit: int = Query(default=20000, ge=1, le=20000, description="Número máximo de ocorrências para retornar"),
     skip: int = Query(default=0, ge=0, description="Número de ocorrências para pular (paginação)"),
-    complete: bool = Query(default=False, description="Se True, retorna dados completos da collection mesclada (aeronaves + tipos + fatores + recomendações)")
+    complete: bool = Query(default=False, description="Se True, retorna dados completos da collection mesclada (aeronaves + tipos + fatores + recomendações)"),
+    
+    # Filtros básicos de ocorrência
+    states: Optional[List[str]] = Query(default=None, description="Estados para filtrar (ex: SP,RJ,MG)"),
+    cities: Optional[List[str]] = Query(default=None, description="Cidades para filtrar"),
+    classifications: Optional[List[str]] = Query(default=None, description="Classificações de ocorrência para filtrar"),
+    countries: Optional[List[str]] = Query(default=None, description="Países para filtrar"),
+    
+    # Filtros de aeronave (só funcionam com complete=true)
+    aircraft_manufacturers: Optional[List[str]] = Query(default=None, description="Fabricantes de aeronaves para filtrar"),
+    aircraft_types: Optional[List[str]] = Query(default=None, description="Tipos de aeronaves para filtrar"),
+    damage_levels: Optional[List[str]] = Query(default=None, description="Níveis de dano para filtrar"),
+    
+    # Filtros de data
+    date_start: Optional[str] = Query(default=None, description="Data inicial (formato YYYY-MM-DD)"),
+    date_end: Optional[str] = Query(default=None, description="Data final (formato YYYY-MM-DD)")
 ):
     """
-    Busca ocorrências com coordenadas válidas
+    Busca ocorrências com coordenadas válidas com filtros customizados
     
     - **limit**: Número máximo de ocorrências para retornar (1-20000)
     - **skip**: Número de ocorrências para pular (paginação)  
     - **complete**: Se True, retorna dados COMPLETOS da collection mesclada
     
+    ### Filtros disponíveis:
+    - **Básicos**: states, cities, classifications, countries, date_start, date_end
+    - **Aeronaves** (apenas com complete=true): aircraft_manufacturers, aircraft_types, damage_levels
+    
     ### Modos de uso:
-    - `complete=false` (padrão): Dados básicos de ocorrências apenas
-    - `complete=true`: Dados completos (aeronaves + tipos + fatores + recomendações)
+    - `complete=false` (padrão): Dados básicos de ocorrências apenas (filtros básicos)
+    - `complete=true`: Dados completos + filtros de aeronaves
+    
+    ### Exemplos:
+    - `/coordinates?states=SP,RJ&date_start=2020-01-01`
+    - `/coordinates?complete=true&aircraft_manufacturers=BOEING,AIRBUS`
     """
     try:
         # Se complete=true, usa a collection mesclada com TODOS os dados
@@ -37,11 +61,30 @@ async def get_ocurrences_coordinates(
             # Busca da collection mesclada (dados completos)
             ocurrences = await MergedOcurrenceService.get_merged_ocurrences_with_coordinates(
                 limit=limit, 
-                skip=skip
+                skip=skip,
+                states=states,
+                cities=cities,
+                classifications=classifications,
+                countries=countries,
+                aircraft_manufacturers=aircraft_manufacturers,
+                aircraft_types=aircraft_types,
+                damage_levels=damage_levels,
+                date_start=date_start,
+                date_end=date_end
             )
             
             # Conta total da collection mesclada
-            total = await MergedOcurrenceService.count_merged_ocurrences_with_coordinates()
+            total = await MergedOcurrenceService.count_merged_ocurrences_with_coordinates(
+                states=states,
+                cities=cities,
+                classifications=classifications,
+                countries=countries,
+                aircraft_manufacturers=aircraft_manufacturers,
+                aircraft_types=aircraft_types,
+                damage_levels=damage_levels,
+                date_start=date_start,
+                date_end=date_end
+            )
             
             # Obtém estatísticas
             stats = await MergedOcurrenceService.get_merged_stats()
@@ -62,11 +105,24 @@ async def get_ocurrences_coordinates(
             # Busca as ocorrências com coordenadas (dados básicos)
             ocurrences = await OcurrenceService.get_ocurrences_with_coordinates(
                 limit=limit, 
-                skip=skip
+                skip=skip,
+                states=states,
+                cities=cities,
+                classifications=classifications,
+                countries=countries,
+                date_start=date_start,
+                date_end=date_end
             )
             
             # Conta o total de ocorrências com coordenadas
-            total = await OcurrenceService.count_ocurrences_with_coordinates()
+            total = await OcurrenceService.count_ocurrences_with_coordinates(
+                states=states,
+                cities=cities,
+                classifications=classifications,
+                countries=countries,
+                date_start=date_start,
+                date_end=date_end
+            )
             
             response = {
                 "total": total,
