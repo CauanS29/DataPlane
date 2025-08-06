@@ -22,10 +22,8 @@ services:
     env_file:
       - .env
     environment:
-      - MONGODB_HOST=host.docker.internal
+      - MONGODB_HOST=mongodb
     command: python /app/mongo-init/init-mongo.py
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   api:
     build:
@@ -45,9 +43,7 @@ services:
     environment:
       - DEBUG=True
       - API_TOKEN=${API_TOKEN}
-      - MONGODB_URL=mongodb://host.docker.internal:27017
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - MONGODB_URL=mongodb://mongodb:27017
 
   mongo-seeder:
     build:
@@ -61,10 +57,8 @@ services:
     env_file:
       - .env
     environment:
-      - MONGODB_URL=mongodb://host.docker.internal:27017
+      - MONGODB_URL=mongodb://mongodb:27017
     command: python /app/run_seeders.py
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
-  mongodb_data: 
+  mongodb_data:
