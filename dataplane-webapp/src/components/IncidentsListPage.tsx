@@ -12,6 +12,18 @@ const IncidentsListPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  // Função para mapear o nível de dano para severity
+  const mapSeverity = (nivelDano: string): 'minor' | 'major' | 'fatal' => {
+    switch (nivelDano) {
+      case 'DESTRUÍDA':
+        return 'fatal';
+      case 'DANIFICADA':
+        return 'major';
+      default:
+        return 'minor';
+    }
+  };
+
   // Converter ocurrences para o formato esperado pela tabela
   const mappedOccurrences = useMemo(() => {
     return ocurrences.map(occ => ({
@@ -40,8 +52,7 @@ const IncidentsListPage: React.FC = () => {
       phase: occ.aeronave_fase_operacao,
       cause: occ.ocorrencia_classificacao,
       weather: '',
-      severity: occ.aeronave_nivel_dano === 'DESTRUÍDA' ? 'fatal' : 
-                occ.aeronave_nivel_dano === 'DANIFICADA' ? 'major' : 'minor'
+      severity: mapSeverity(occ.aeronave_nivel_dano)
     }));
   }, [ocurrences]);
 
