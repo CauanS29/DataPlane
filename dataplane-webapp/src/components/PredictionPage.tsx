@@ -6,21 +6,53 @@ import { PredictionRequest, PredictionResponse } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Brain, Send, AlertCircle, BarChart2, Zap } from 'lucide-react';
+import { Select } from 'antd';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
-interface FormOptions {
-  aeronave_tipo_operacao: string[];
-  fator_area: string[];
-  aeronave_tipo_veiculo: string[];
-  ocorrencia_uf: string[];
+interface FilterOptionsResponse {
+  filter_options: {
+    states: string[];
+    cities: string[];
+    classifications: string[];
+    countries: string[];
+    aerodromes: string[];
+    aircraft_manufacturers: string[];
+    aircraft_types: string[];
+    aircraft_models: string[];
+    damage_levels: string[];
+    aircraft_operators: string[];
+    operation_phases: string[];
+    operation_types: string[];
+    investigation_status: string[];
+    aircraft_released: string[];
+    occurrence_types: string[];
+    occurrence_type_categories: string[];
+    factor_names: string[];
+    factor_aspects: string[];
+    factor_areas: string[];
+  };
+  metadata: {
+    total_unique_options: number;
+    fields_available: number;
+    data_source: string;
+    note: string;
+  };
 }
 
 const PredictionPage: React.FC = () => {
   const { isAuthenticated, testApiConnection } = useAppStore();
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [formOptions, setFormOptions] = useState<FormOptions | null>(null);
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse | null>(null);
+
+  // Função auxiliar para converter array de strings em opções do Select
+  const arrayToSelectOptions = (options: string[]) => {
+    return options.map(option => ({
+      label: option,
+      value: option
+    }));
+  };
 
   const {
     control,
@@ -41,9 +73,10 @@ const PredictionPage: React.FC = () => {
     const fetchOptions = async () => {
       if (isAuthenticated) {
         try {
-          const options = await apiClient.getPredictionFormOptions();
-          setFormOptions(options as any);
+          const options = await apiClient.getFilterOptions();
+          setFilterOptions(options);
         } catch (error) {
+          console.error('Erro ao buscar opções do formulário:', error);
           toast.error('Erro ao buscar opções do formulário.');
         }
       }
@@ -150,12 +183,20 @@ const PredictionPage: React.FC = () => {
               rules={{ required: 'Campo obrigatório' }}
               render={({ field }) => (
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Tipo de Operação</label>
-                  <select {...field} className={`border ${errors.aeronave_tipo_operacao ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}>
-                    <option value="">Selecione...</option>
-                    {formOptions?.aeronave_tipo_operacao.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                  {errors.aeronave_tipo_operacao && <span className="text-red-500 text-sm">{errors.aeronave_tipo_operacao.message}</span>}
+                  <label className="block text-sm font-medium text-black mb-2">Tipo de Operação</label>
+                  <Select
+                    {...field}
+                    showSearch
+                    placeholder="Selecione tipo de operação"
+                    options={filterOptions ? arrayToSelectOptions(filterOptions.filter_options.operation_types) : []}
+                    className="w-full"
+                    allowClear
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    status={errors.aeronave_tipo_operacao ? 'error' : undefined}
+                  />
+                  {errors.aeronave_tipo_operacao && <span className="text-red-500 text-sm mt-1">{errors.aeronave_tipo_operacao.message}</span>}
                 </div>
               )}
             />
@@ -166,12 +207,20 @@ const PredictionPage: React.FC = () => {
               rules={{ required: 'Campo obrigatório' }}
               render={({ field }) => (
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Área do Fator Contribuinte</label>
-                  <select {...field} className={`border ${errors.fator_area ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}>
-                    <option value="">Selecione...</option>
-                    {formOptions?.fator_area.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                  {errors.fator_area && <span className="text-red-500 text-sm">{errors.fator_area.message}</span>}
+                  <label className="block text-sm font-medium text-black mb-2">Área do Fator Contribuinte</label>
+                  <Select
+                    {...field}
+                    showSearch
+                    placeholder="Selecione área do fator contribuinte"
+                    options={filterOptions ? arrayToSelectOptions(filterOptions.filter_options.factor_areas) : []}
+                    className="w-full"
+                    allowClear
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    status={errors.fator_area ? 'error' : undefined}
+                  />
+                  {errors.fator_area && <span className="text-red-500 text-sm mt-1">{errors.fator_area.message}</span>}
                 </div>
               )}
             />
@@ -182,12 +231,20 @@ const PredictionPage: React.FC = () => {
               rules={{ required: 'Campo obrigatório' }}
               render={({ field }) => (
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Tipo de Veículo</label>
-                  <select {...field} className={`border ${errors.aeronave_tipo_veiculo ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}>
-                    <option value="">Selecione...</option>
-                    {formOptions?.aeronave_tipo_veiculo.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                  {errors.aeronave_tipo_veiculo && <span className="text-red-500 text-sm">{errors.aeronave_tipo_veiculo.message}</span>}
+                  <label className="block text-sm font-medium text-black mb-2">Tipo de Veículo</label>
+                  <Select
+                    {...field}
+                    showSearch
+                    placeholder="Selecione tipo de veículo"
+                    options={filterOptions ? arrayToSelectOptions(filterOptions.filter_options.aircraft_types) : []}
+                    className="w-full"
+                    allowClear
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    status={errors.aeronave_tipo_veiculo ? 'error' : undefined}
+                  />
+                  {errors.aeronave_tipo_veiculo && <span className="text-red-500 text-sm mt-1">{errors.aeronave_tipo_veiculo.message}</span>}
                 </div>
               )}
             />
@@ -198,13 +255,21 @@ const PredictionPage: React.FC = () => {
               rules={{ required: 'Campo obrigatório' }}
               render={({ field }) => (
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">UF da Ocorrência</label>
-                  <select {...field} className={`border ${errors.ocorrencia_uf ? 'border-red-500' : 'border-gray-300'} rounded-md p-2`}>
-                    <option value="">Selecione...</option>
-                    {formOptions?.ocorrencia_uf.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                  {errors.ocorrencia_uf && <span className="text-red-500 text-sm">{errors.ocorrencia_uf.message}</span>}
-            </div>
+                  <label className="block text-sm font-medium text-black mb-2">UF da Ocorrência</label>
+                  <Select
+                    {...field}
+                    showSearch
+                    placeholder="Selecione UF da ocorrência"
+                    options={filterOptions ? arrayToSelectOptions(filterOptions.filter_options.states) : []}
+                    className="w-full"
+                    allowClear
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    status={errors.ocorrencia_uf ? 'error' : undefined}
+                  />
+                  {errors.ocorrencia_uf && <span className="text-red-500 text-sm mt-1">{errors.ocorrencia_uf.message}</span>}
+                </div>
               )}
             />
 
@@ -242,7 +307,7 @@ const PredictionPage: React.FC = () => {
               type="submit"
               loading={loading}
               className="w-full"
-              disabled={!isAuthenticated || !formOptions}
+              disabled={!isAuthenticated || !filterOptions}
             >
               <Send className="w-4 h-4 mr-2" />
               {loading ? 'Analisando...' : 'Gerar Predição'}

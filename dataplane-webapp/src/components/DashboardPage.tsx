@@ -11,15 +11,15 @@ import OcurrenceMap from './OcurrenceMap';
 import Filter from './Filter';
 
 const DashboardPage: React.FC = () => {
-  const { accidents, ocurrences, fetchAccidents, fetchOcurrencesCoordinates, ocurrencesTotal, filters, segmentBy } = useAppStore();
+  const { accidents, ocurrences, fetchOcurrencesCoordinates, ocurrencesTotal, filters, segmentBy } = useAppStore();
   const [selectedAccident, setSelectedAccident] = useState<AirAccident | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     console.log('Carregando dados...');
-    fetchAccidents();
+
     fetchOcurrencesCoordinates();
-  }, [fetchAccidents, fetchOcurrencesCoordinates]);
+  }, [fetchOcurrencesCoordinates]);
 
   // Log quando os dados mudam
   useEffect(() => {

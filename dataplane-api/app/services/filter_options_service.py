@@ -39,7 +39,13 @@ class FilterOptionsService:
                 if value and isinstance(value, str):
                     cleaned = value.strip()
                     if cleaned and cleaned.lower() not in ['nan', 'null', '***', 'none', '-', 'n/a']:
-                        values.append(cleaned)
+                        # Campos que podem ter múltiplos valores separados por '; '
+                        if field_name in ["ocorrencia_tipo", "ocorrencia_tipo_categoria", "fator_nome", "fator_aspecto", "fator_area"]:
+                            # Separa por '; ' e adiciona cada valor individualmente
+                            split_values = [v.strip() for v in cleaned.split(';') if v.strip()]
+                            values.extend(split_values)
+                        else:
+                            values.append(cleaned)
                 elif value and not isinstance(value, str):
                     values.append(str(value))
             

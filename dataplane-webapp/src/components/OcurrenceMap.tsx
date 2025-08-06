@@ -371,11 +371,11 @@ const OcurrenceMap = () => {
                     minRotation: 45,
                     padding: 10,
                     autoSkip: false,
-                    callback: function(value: string | number, index: number) {
+                    callback: function(value: string | number, index: number): string {
                         // @ts-expect-error - Chart.js context type is not properly typed
                         const labels = this.chart?.data?.labels;
                         if (!labels) return '';
-                        const label = labels[index];
+                        const label = labels[index] as string;
                         if (typeof label === 'string') {
                             return label.length > 15 ? label.substring(0, 15) + '...' : label;
                         }

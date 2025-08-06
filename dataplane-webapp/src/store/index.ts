@@ -1,11 +1,16 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { AppState, AirAccident, DashboardFilters, OcurrenceCoordinates } from '@/types';
-import { apiClient } from '@/lib/api';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import {
+  AppState,
+  AirAccident,
+  DashboardFilters,
+  OcurrenceCoordinates,
+} from "@/types";
+import { apiClient } from "@/lib/api";
 
 interface AppStore extends AppState {
   // Actions
-  setCurrentView: (view: 'prediction' | 'dashboard' | 'charts') => void;
+  setCurrentView: (view: "prediction" | "dashboard" | "charts") => void;
   setAuthenticated: (authenticated: boolean) => void;
   setAccidents: (accidents: AirAccident[]) => void;
   setOcurrences: (ocurrences: OcurrenceCoordinates[]) => void;
@@ -15,7 +20,6 @@ interface AppStore extends AppState {
   removeAccident: (id: string) => void;
   reset: () => void;
   testApiConnection: () => Promise<boolean>;
-  fetchAccidents: () => Promise<void>;
   fetchOcurrencesCoordinates: () => Promise<void>;
   clearStorageData: () => void;
   // Filtros do mapa
@@ -28,8 +32,8 @@ interface AppStore extends AppState {
 }
 
 const initialState: AppState = {
-  currentView: 'prediction',
-  apiToken: '', // Não é mais usado, mas mantido para compatibilidade
+  currentView: "prediction",
+  apiToken: "", // Não é mais usado, mas mantido para compatibilidade
   isAuthenticated: false,
   accidents: [],
   ocurrences: [],
@@ -37,32 +41,32 @@ const initialState: AppState = {
   loading: false,
   error: null,
   filters: {},
-  segmentBy: '',
 };
 
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
       ...initialState,
-      
+
       // Funções de filtro
       filters: {},
       setFilter: (filterId: string, value: string | string[]) =>
         set((state) => ({
           filters: {
             ...state.filters,
-            [filterId]: value
-          }
+            [filterId]: value,
+          },
         })),
       clearFilters: () => set((state) => ({ filters: {} })),
-      
+
       // Funções de segmentação
-      segmentBy: '',
+      segmentBy: "",
       setSegmentBy: (segmentBy: string) => set({ segmentBy }),
 
       setCurrentView: (view) => set({ currentView: view }),
 
-      setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
+      setAuthenticated: (authenticated) =>
+        set({ isAuthenticated: authenticated }),
 
       setAccidents: (accidents) => set({ accidents }),
 
@@ -102,50 +106,54 @@ export const useAppStore = create<AppStore>()(
         }
       },
 
-      fetchAccidents: async () => {
-        set({ loading: true, error: null });
-        try {
-          const data = await apiClient.getAIHistory();
-          set({ accidents: data, loading: false });
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar dados';
-          set({ error: errorMessage, loading: false });
-          console.error('Erro ao buscar dados:', err);
-        }
-      },
-
       fetchOcurrencesCoordinates: async () => {
         set({ loading: true, error: null });
         try {
           const data = await apiClient.getOcurrencesCoordinates();
           // Garante que data seja um objeto com total e ocurrences
-          const ocurrencesArray = Array.isArray(data.ocurrences) ? data.ocurrences : [];
+          const ocurrencesArray = Array.isArray(data.ocurrences)
+            ? data.ocurrences
+            : [];
           const total = data.total || 0;
-          
+
           // Log do tamanho dos dados para monitoramento
-          console.log(`Dados recebidos: ${ocurrencesArray.length} ocorrências, ~${JSON.stringify(ocurrencesArray).length} bytes`);
-          
-          set({ ocurrences: ocurrencesArray, ocurrencesTotal: total, loading: false });
+          console.log(
+            `Dados recebidos: ${ocurrencesArray.length} ocorrências, ~${
+              JSON.stringify(ocurrencesArray).length
+            } bytes`
+          );
+
+          set({
+            ocurrences: ocurrencesArray,
+            ocurrencesTotal: total,
+            loading: false,
+          });
         } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar coordenadas';
-          set({ error: errorMessage, loading: false, ocurrences: [], ocurrencesTotal: 0 });
-          console.error('Erro ao buscar coordenadas:', err);
+          const errorMessage =
+            err instanceof Error ? err.message : "Erro ao buscar coordenadas";
+          set({
+            error: errorMessage,
+            loading: false,
+            ocurrences: [],
+            ocurrencesTotal: 0,
+          });
+          console.error("Erro ao buscar coordenadas:", err);
         }
       },
 
       // Função para limpar dados do localStorage em caso de problemas
       clearStorageData: () => {
         try {
-          localStorage.removeItem('dataplane-storage');
-          console.log('Dados do localStorage limpos com sucesso');
+          localStorage.removeItem("dataplane-storage");
+          console.log("Dados do localStorage limpos com sucesso");
         } catch (clearError) {
-          console.warn('Erro ao limpar localStorage:', clearError);
+          console.warn("Erro ao limpar localStorage:", clearError);
         }
       },
     }),
-    
+
     {
-      name: 'dataplane-storage',
+      name: "dataplane-storage",
       partialize: (state) => ({
         currentView: state.currentView,
         isAuthenticated: state.isAuthenticated,
@@ -156,12 +164,12 @@ export const useAppStore = create<AppStore>()(
       onRehydrateStorage: () => {
         return (state, error) => {
           if (error) {
-            console.warn('Erro ao recarregar dados do localStorage:', error);
+            console.warn("Erro ao recarregar dados do localStorage:", error);
             // Em caso de erro, limpa os dados
             try {
-              localStorage.removeItem('dataplane-storage');
+              localStorage.removeItem("dataplane-storage");
             } catch (clearError) {
-              console.warn('Erro ao limpar localStorage:', clearError);
+              console.warn("Erro ao limpar localStorage:", clearError);
             }
           }
         };
@@ -179,8 +187,8 @@ interface DashboardStore {
 
 const initialFilters: DashboardFilters = {
   dateRange: {
-    start: '',
-    end: '',
+    start: "",
+    end: "",
   },
   severity: [],
   phase: [],
@@ -200,7 +208,7 @@ export const useDashboardStore = create<DashboardStore>()(
       resetFilters: () => set({ filters: initialFilters }),
     }),
     {
-      name: 'dashboard-filters',
+      name: "dashboard-filters",
     }
   )
-); 
+);

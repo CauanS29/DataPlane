@@ -48,7 +48,7 @@ class ApiClient {
   }
 
   async predictDamage(request: PredictionRequest): Promise<PredictionResponse> {
-    const response = await this.client.post('/api/v1/ai/predict', request);
+    const response = await this.client.post('/api/v1/predict', request);
     return response.data;
   }
 
