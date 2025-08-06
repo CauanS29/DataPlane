@@ -51,7 +51,7 @@ export interface AirAccident {
 
 // Tipos para o estado da aplicação
 export interface AppState {
-  currentView: 'prediction' | 'dashboard';
+  currentView: 'prediction' | 'dashboard' | 'charts';
   apiToken: string;
   isAuthenticated: boolean;
   accidents: AirAccident[];

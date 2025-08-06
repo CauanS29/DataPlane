@@ -5,7 +5,7 @@ import { apiClient } from '@/lib/api';
 
 interface AppStore extends AppState {
   // Actions
-  setCurrentView: (view: 'prediction' | 'dashboard') => void;
+  setCurrentView: (view: 'prediction' | 'dashboard' | 'charts') => void;
   setAuthenticated: (authenticated: boolean) => void;
   setAccidents: (accidents: AirAccident[]) => void;
   setOcurrences: (ocurrences: OcurrenceCoordinates[]) => void;

@@ -5,6 +5,7 @@ import { useAppStore } from '@/store';
 import Header from '@/components/Header';
 import PredictionPage from '@/components/PredictionPage';
 import DashboardPage from '@/components/DashboardPage';
+import ChartsPage from '@/components/ChartsPage';
 import { Toaster } from 'react-hot-toast';
 
 export default function Home() {
@@ -17,6 +18,8 @@ export default function Home() {
       <main className="py-8">
         {currentView === 'prediction' ? (
           <PredictionPage />
+        ) : currentView === 'charts' ? (
+          <ChartsPage />
         ) : (
           <DashboardPage />
         )}

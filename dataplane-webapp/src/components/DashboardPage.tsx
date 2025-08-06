@@ -11,15 +11,61 @@ import OcurrenceMap from './OcurrenceMap';
 import Filter from './Filter';
 
 const DashboardPage: React.FC = () => {
-  const { accidents, fetchAccidents, ocurrencesTotal, filters, segmentBy } = useAppStore();
+  const { accidents, ocurrences, fetchAccidents, fetchOcurrencesCoordinates, ocurrencesTotal, filters, segmentBy } = useAppStore();
   const [selectedAccident, setSelectedAccident] = useState<AirAccident | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
+    console.log('Carregando dados...');
     fetchAccidents();
-  }, [fetchAccidents]);
+    fetchOcurrencesCoordinates();
+  }, [fetchAccidents, fetchOcurrencesCoordinates]);
 
-  const stats = calculateAccidentStats(accidents);
+  // Log quando os dados mudam
+  useEffect(() => {
+    console.log('Ocurrences atualizadas:', ocurrences.length);
+    if (ocurrences.length > 0) {
+      console.log('Primeira ocorrência:', ocurrences[0]);
+    }
+  }, [ocurrences]);
+
+  // Usar ocurrences para os cálculos de estatísticas
+  const mappedOccurrences = ocurrences.map(occ => ({
+    id: occ.codigo_ocorrencia,
+    date: occ.ocorrencia_dia,
+    location: {
+      city: occ.ocorrencia_cidade,
+      state: occ.ocorrencia_uf,
+      country: occ.ocorrencia_pais,
+      coordinates: {
+        lat: occ.ocorrencia_latitude,
+        lng: occ.ocorrencia_longitude
+      }
+    },
+    aircraft: {
+      type: occ.aeronave_tipo_veiculo,
+      registration: occ.aeronave_matricula,
+      operator: occ.aeronave_operador_categoria
+    },
+    fatalities: {
+      total: occ.aeronave_fatalidades_total || 0,
+      passengers: 0,
+      crew: 0,
+      ground: 0
+    },
+    phase: occ.aeronave_fase_operacao,
+    cause: occ.ocorrencia_classificacao,
+    weather: '',
+    severity: occ.aeronave_nivel_dano === 'DESTRUÍDA' ? 'fatal' : 
+              occ.aeronave_nivel_dano === 'DANIFICADA' ? 'major' : 'minor'
+  }));
+
+  const stats = calculateAccidentStats(mappedOccurrences);
+
+  // Debug logs
+  console.log('Ocurrences length:', ocurrences.length);
+  console.log('Stats:', stats);
+  console.log('Sample ocurrence:', ocurrences[0]);
 
   // Calcula filtros ativos
   const activeFiltersCount = useMemo(() => {
@@ -172,7 +218,7 @@ const DashboardPage: React.FC = () => {
                   }}
                   placeholder="Selecione a segmentação"
                   className="w-full"
-                  size="small"
+                  size="middle"
                 >
                   <Select.Option value="">Sem segmentação</Select.Option>
                   <Select.Option value="ocorrencia_classificacao">Por Classificação</Select.Option>
@@ -238,7 +284,7 @@ const DashboardPage: React.FC = () => {
               <AlertTriangle className="w-6 h-6 text-red-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Fatalidades</p>
+              <p className="text-sm font-medium text-gray-600">Total de Fatalidades</p>
               <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.fatalities || 0)}</p>
             </div>
           </div>
@@ -246,13 +292,13 @@ const DashboardPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Calendar className="w-6 h-6 text-yellow-600" />
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <AlertTriangle className="w-6 h-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Último Incidente</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {accidents.length > 0 ? formatDate(accidents[0].date) : 'N/A'}
+              <p className="text-sm font-medium text-gray-600">Aeronaves Destruídas</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {ocurrences.length > 0 ? ocurrences.filter(occ => occ.aeronave_nivel_dano === 'DESTRUÍDA').length || 0 : 0}
               </p>
             </div>
           </div>
@@ -260,13 +306,13 @@ const DashboardPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <MapPin className="w-6 h-6 text-green-600" />
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <AlertTriangle className="w-6 h-6 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Países Afetados</p>
+              <p className="text-sm font-medium text-gray-600">Investigação Finalizada</p>
               <p className="text-2xl font-bold text-gray-900">
-                {accidents.length > 0 ? new Set(accidents.map(acc => acc.location?.country).filter(c => c)).size : 0}
+                {ocurrences.length > 0 ? ocurrences.filter(occ => occ.investigacao_status === 'FINALIZADA').length || 0 : 0}
               </p>
             </div>
           </div>
@@ -278,82 +324,6 @@ const DashboardPage: React.FC = () => {
       {/* Gráficos e visualizações */}
       <div className="mb-8">
         <OcurrenceMap />
-      </div>
-
-      {/* Lista de acidentes */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Lista de Incidentes</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Localização
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aeronave
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fase
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Severidade
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fatalidades
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAccidents.map((accident) => (
-                <tr
-                  key={accident.id}
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => setSelectedAccident(accident)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(accident.date)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div>
-                      <div className="font-medium">{accident.location.city}</div>
-                      <div className="text-gray-500">{accident.location.country}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div>
-                      <div className="font-medium">{accident.aircraft.type}</div>
-                      <div className="text-gray-500">{accident.aircraft.operator}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
-                    {accident.phase}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                      style={{
-                        backgroundColor: getSeverityColor(accident.severity) + '20',
-                        color: getSeverityColor(accident.severity)
-                      }}
-                    >
-                      {accident.severity === 'minor' ? 'Menor' : 
-                       accident.severity === 'major' ? 'Maior' : 'Fatal'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {accident.fatalities.total}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* Modal de detalhes */}

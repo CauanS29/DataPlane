@@ -13,7 +13,7 @@ const Header: React.FC = () => {
     testApiConnection 
   } = useAppStore();
 
-  const handleViewChange = (view: 'prediction' | 'dashboard') => {
+  const handleViewChange = (view: 'prediction' | 'dashboard' | 'charts') => {
     setCurrentView(view);
   };
 
@@ -65,6 +65,17 @@ const Header: React.FC = () => {
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               Dashboard
+            </button>
+            <button
+              onClick={() => handleViewChange('charts')}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                currentView === 'charts'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Análise temporal
             </button>
           </nav>
 
