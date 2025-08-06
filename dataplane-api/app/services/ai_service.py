@@ -15,7 +15,7 @@ class AIService:
         self.model = joblib.load('model/checkpoint/random_forest_model.joblib')
         self.label_encoders = joblib.load('model/label_encoders/label_encoders.joblib')
         self.target_encoder = joblib.load('model/target_encoders/target_encoder.joblib')
-
+    
     def predict(self, data: Dict[str, Any]) -> Dict[str, Any]:
         df_novo = pd.DataFrame([data])
 

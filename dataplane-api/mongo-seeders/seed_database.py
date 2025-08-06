@@ -52,7 +52,7 @@ class SeedDatabase:
             print(f"🔌 Conectando ao MongoDB...")
             self.client = MongoClient(
                 connection_string,
-                authSource=self.mongodb_auth_source
+                authSource='admin'
             )
             self.db = self.client[self.mongodb_db]
             # Testa a conexão

@@ -51,7 +51,7 @@ class MergedCollectionCreator:
             print(f"🔌 Conectando ao MongoDB...")
             self.client = MongoClient(
                 connection_string,
-                authSource=self.mongodb_auth_source
+                authSource='admin'
             )
             self.db = self.client[self.mongodb_db]
             self.client.admin.command('ping')

@@ -33,26 +33,6 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
-class ModelInfo(BaseModel):
-    """Schema para informações do modelo de IA"""
-    model_name: str
-    model_path: str
-    is_loaded: bool
-    max_length: int
-    temperature: float
-    last_loaded: Optional[datetime] = None
-
-
-class AIRequestHistory(BaseModel):
-    """Schema para histórico de requisições de IA"""
-    id: Optional[str] = None
-    prompt: str
-    generated_text: str
-    model_name: str
-    generation_time: int  # em milissegundos
-    tokens_generated: int
-    created_at: datetime = Field(default_factory=datetime.utcnow) 
-
 class OcurrenceCoordinates(BaseModel):
     """Schema para coordenadas de ocorrências"""
     codigo_ocorrencia: str = Field(..., description="Código único da ocorrência")

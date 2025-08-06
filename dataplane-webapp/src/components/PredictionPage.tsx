@@ -204,7 +204,7 @@ const PredictionPage: React.FC = () => {
                     {formOptions?.ocorrencia_uf.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                   {errors.ocorrencia_uf && <span className="text-red-500 text-sm">{errors.ocorrencia_uf.message}</span>}
-                </div>
+            </div>
               )}
             />
 
@@ -213,10 +213,10 @@ const PredictionPage: React.FC = () => {
               control={control}
               rules={{ required: 'Campo obrigatório', min: 1900, max: new Date().getFullYear() }}
               render={({ field }) => (
-                <Input
+              <Input
                   {...field}
                   label="Ano de Fabricação"
-                  type="number"
+                type="number"
                   placeholder="Ex: 2010"
                   error={errors.aeronave_ano_fabricacao?.message}
                 />
@@ -276,7 +276,7 @@ const PredictionPage: React.FC = () => {
                     <p className={`text-2xl font-bold ${getConfidenceColor(result.confidence)}`}>
                         {(result.confidence * 100).toFixed(2)}%
                     </p>
-                </div>
+              </div>
             </div>
           )}
 
