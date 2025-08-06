@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { AIRequest, AIResponse, HealthCheck } from '@/types';
+import { HealthCheck, PredictionRequest, PredictionResponse } from '@/types';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -41,36 +41,18 @@ class ApiClient {
     return response.data;
   }
 
-  // AI Prediction
-  async generateText(request: AIRequest): Promise<AIResponse> {
-    const response = await this.client.post('/api/v1/ai/generate', request);
+  // Prediction
+  async getPredictionFormOptions(): Promise<Record<string, string[]>> {
+    const response = await this.client.get('/api/v1/ai/predict/form-options');
     return response.data;
   }
 
-  // AI Model Info
-  async getModelInfo() {
-    const response = await this.client.get('/api/v1/ai/model/info');
+  async predictDamage(request: PredictionRequest): Promise<PredictionResponse> {
+    const response = await this.client.post('/api/v1/ai/predict', request);
     return response.data;
   }
 
-  // Load AI Model
-  async loadModel() {
-    const response = await this.client.post('/api/v1/ai/model/load');
-    return response.data;
-  }
-
-  // Unload AI Model
-  async unloadModel() {
-    const response = await this.client.post('/api/v1/ai/model/unload');
-    return response.data;
-  }
-
-  // Get AI History
-  async getAIHistory(limit = 50, skip = 0) {
-    const response = await this.client.get(`/api/v1/ai/history?limit=${limit}&skip=${skip}`);
-    return response.data;
-  }
-
+  // Ocurrences
   async getOcurrencesCoordinates() {
     const response = await this.client.get('/api/v1/ocurrence/coordinates?complete=true');
     return response.data;

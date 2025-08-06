@@ -1,18 +1,16 @@
 // Tipos para a API
-export interface AIRequest {
-  prompt: string;
-  max_length?: number;
-  temperature?: number;
-  top_p?: number;
-  do_sample?: boolean;
+export interface PredictionRequest {
+  aeronave_tipo_operacao: string;
+  fator_area: string;
+  aeronave_tipo_veiculo: string;
+  aeronave_ano_fabricacao: number;
+  ocorrencia_uf: string;
+  aeronave_fatalidades_total: number;
 }
 
-export interface AIResponse {
-  generated_text: string;
-  prompt: string;
-  model_name: string;
-  generation_time: number;
-  tokens_generated: number;
+export interface PredictionResponse {
+  prediction: string;
+  confidence: number;
 }
 
 export interface HealthCheck {
@@ -65,13 +63,6 @@ export interface AppState {
 }
 
 // Tipos para formulários
-export interface PredictionFormData {
-  prompt: string;
-  maxLength: number;
-  temperature: number;
-  topP: number;
-  doSample: boolean;
-}
 
 // Tipos para filtros do dashboard
 export interface DashboardFilters {

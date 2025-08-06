@@ -25,13 +25,6 @@ class Settings(BaseSettings):
     MONGODB_PASSWORD: str
     MONGODB_AUTH_SOURCE: str = "admin"
 
-    # Configurações da IA
-    AI_MODEL_PATH: str = "./models/checkpoint"
-    AI_MODEL_NAME: str = "gpt2"
-    AI_MAX_LENGTH: int = 512
-    AI_TEMPERATURE: float = 0.7
-    LOAD_AI_MODEL_ON_STARTUP: bool = False
-
     # Configurações de CORS
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 

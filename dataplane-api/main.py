@@ -28,10 +28,6 @@ async def startup_event():
     Funções a serem executadas na inicialização da aplicação.
     """
     logger.info("🚀 Iniciando a aplicação...")
-    if settings.LOAD_AI_MODEL_ON_STARTUP:
-        logger.info("🧠 Carregando modelo de IA...")
-        ai_service.load_model()
-        logger.info("✅ Modelo de IA carregado com sucesso!")
 
 @app.on_event("shutdown")
 async def shutdown_event():
