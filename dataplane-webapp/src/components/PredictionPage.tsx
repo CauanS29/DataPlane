@@ -41,7 +41,7 @@ interface FilterOptionsResponse {
 }
 
 const PredictionPage: React.FC = () => {
-  const { isAuthenticated, testApiConnection } = useAppStore();
+  const { testApiConnection } = useAppStore();
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse | null>(null);
@@ -71,25 +71,22 @@ const PredictionPage: React.FC = () => {
 
   useEffect(() => {
     const fetchOptions = async () => {
-      if (isAuthenticated) {
+      
         try {
           const options = await apiClient.getFilterOptions();
           setFilterOptions(options);
         } catch (error) {
           console.error('Erro ao buscar opções do formulário:', error);
           toast.error('Erro ao buscar opções do formulário.');
-        }
+        
       }
     };
     fetchOptions();
-  }, [isAuthenticated]);
+  }, []);
 
   const onSubmit = async (data: PredictionRequest) => {
-    if (!isAuthenticated) {
-      toast.error('API não está conectada. Verifique a configuração.');
-      return;
-    }
 
+    
     setLoading(true);
     setResult(null);
 
@@ -154,20 +151,6 @@ const PredictionPage: React.FC = () => {
           Preencha os dados da ocorrência para prever o nível de dano da aeronave.
         </p>
       </div>
-
-      {!isAuthenticated && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
-            <div>
-              <h3 className="text-sm font-medium text-red-800">API Desconectada</h3>
-              <p className="text-sm text-red-700 mt-1">
-                A API não está conectada. Verifique se a API está rodando e se o token está configurado corretamente.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -307,7 +290,7 @@ const PredictionPage: React.FC = () => {
               type="submit"
               loading={loading}
               className="w-full"
-              disabled={!isAuthenticated || !filterOptions}
+              disabled={!filterOptions}
             >
               <Send className="w-4 h-4 mr-2" />
               {loading ? 'Analisando...' : 'Gerar Predição'}
